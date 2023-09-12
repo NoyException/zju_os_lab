@@ -7,8 +7,8 @@
 
 ## 2 实验环境
 
-- [Ubuntu 22.04.1 LTS](https://ubuntu.com/download/desktop/thank-you?version=22.04.1&architecture=amd64)
-- [Ubuntu 22.04.1 LTS Windows Subsystem for Linux 2](https://www.microsoft.com/store/productId/9PN20MSR04DW)
+- [Ubuntu 22.04.3 LTS](https://ubuntu.com/download/desktop)
+- [Ubuntu 22.04.2 LTS Windows Subsystem for Linux 2](https://www.microsoft.com/store/productId/9PN20MSR04DW)
 - Mac with Apple Silicon
 - 其他可行的平台，但我们不提供技术支持
 
@@ -165,14 +165,14 @@ $ sudo apt install gdb-multiarch
 ### 4.2 获取 Linux 源码和已经编译好的文件系统
 
 从 [https://www.kernel.org](https://www.kernel.org) 下载最新的 Linux 源码。
-> 截至写作时，最新的 Linux 内核版本是 6.0rc5.
+> 截至写作时，最新的 Linux 内核版本是 6.6-rc1.
 
 并且使用 git 工具 clone [本仓库](https://github.com/ZJU-SEC/os23fall-stu)。其中已经准备好了根文件系统的镜像。
 
 > 根文件系统为 Linux Kernel 提供了基础的文件服务，在启动 Linux Kernel 时是必要的。
 
 ```bash
-$ git clone https://gitee.com/zjusec/os23fall-stu
+$ git clone https://github.com/ZJU-SEC/os23fall-stu.git
 $ cd os23fall-stu/src/lab0
 $ ls
 rootfs.img  # 已经构建完成的根文件系统的镜像
