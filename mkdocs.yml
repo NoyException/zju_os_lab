@@ -1,7 +1,8 @@
-site_name: 浙江大学23年秋操作系统实验 
+site_name: 浙江大学23年秋冬操作系统实验 
 site_url: https://zju-sec.github.io/os23fall-stu/
 repo_url: https://github.com/ZJU-SEC/os23fall-stu
 repo_name: ZJU-SEC/os23fall-stu
+
 theme:
   name: material
   palette:
@@ -17,8 +18,11 @@ theme:
         name: Switch to light mode
   features:
     - navigation.top
+    - navigation.footer
+    - navigation.tracking
   font:
     code: Cascadia
+
 nav:
   - 实验指导零: lab0.md
   # - 实验指导一: lab1.md
@@ -29,18 +33,7 @@ nav:
   # - 实验指导六: lab6.md
   # - 实验指导七: lab7.md
   - 常见问题及解答: faq.md
-# markdown_extensions:
-#   - attr_list
-#   - pymdownx.tasklist:
-#       custom_checkbox: true
-#   - pymdownx.highlight:
-#       linenums: true
-#   - pymdownx.superfences
-#   - pymdownx.emoji:
-#       emoji_index: !!python/name:materialx.emoji.twemoji
-#       emoji_generator: !!python/name:materialx.emoji.to_svg
-#   - pymdownx.arithmatex:
-#     generic: true
+
 markdown_extensions:
   - attr_list
   - pymdownx.tasklist:
@@ -62,3 +55,10 @@ extra_javascript:
 
 extra_css:
   - stylesheets/extra.css
+
+plugins:
+  - search
+  - heti:
+      extra_skipped_class:
+        - arithmatex
+      disable_serve: false

@@ -1,20 +1,21 @@
 # Lab 0: GDB & QEMU 调试 64 位 RISC-V LINUX
 
-## 1 实验目的
+## 实验目的
+
 - 使用交叉编译工具, 完成Linux内核代码编译
 - 使用QEMU运行内核
 - 熟悉GDB和QEMU联合调试
 
-## 2 实验环境
+## 实验环境
 
 - [Ubuntu 22.04.3 LTS](https://ubuntu.com/download/desktop)
 - [Ubuntu 22.04.2 LTS Windows Subsystem for Linux 2](https://www.microsoft.com/store/productId/9PN20MSR04DW)
 - Mac with Apple Silicon
 - 其他可行的平台，但我们不提供技术支持
 
-## 3 实验基础知识介绍
+## 实验基础知识介绍
 
-### 3.1 Linux 使用基础
+### Linux 使用基础
 
 在 Linux 环境下，人们通常使用命令行接口来完成与计算机的交互。终端（Terminal）是用于处理该过程的一个应用程序，通过终端你可以运行各种程序以及在自己的计算机上处理文件。在类 Unix 的操作系统上，终端可以为你完成一切你所需要的操作。下面我们仅对实验中涉及的一些概念进行介绍，你可以通过下面的链接来对命令行的使用进行学习：
 
@@ -22,9 +23,9 @@
 2. [GNU/Linux Command-Line Tools Summary](https://tldp.org/LDP/GNU-Linux-Tools-Summary/html/index.html)
 3. [Basics of UNIX](https://github.com/berkeley-scf/tutorial-unix-basics)
 
-### 3.2 QEMU 使用基础
+### QEMU 使用基础
 
-#### 什么是QEMU
+#### 什么是 QEMU
 
 QEMU 是一个功能强大的模拟器，可以在 x86 平台上执行不同架构下的程序。我们实验中采用 QEMU 来完成 RISC-V 架构的程序的模拟。
 
@@ -56,7 +57,7 @@ $ qemu-system-riscv64 \
 
 更多参数信息可以参考[这里](https://www.qemu.org/docs/master/system/index.html)
 
-### 3.3 GDB 使用基础
+### GDB 使用基础
 
 #### 什么是 GDB
 
@@ -92,8 +93,7 @@ GDB 的功能十分强大，我们经常在调试中用到的有:
 
 更多命令可以参考[100个gdb小技巧](https://wizardforcel.gitbooks.io/100-gdb-tips/content/)
 
-
-### 3.4 Linux 内核编译基础
+### Linux 内核编译基础
 
 #### 交叉编译
 
@@ -101,7 +101,7 @@ GDB 的功能十分强大，我们经常在调试中用到的有:
 
 #### 内核配置
 
-内核配置是用于配置是否启用内核的各项特性，内核会提供一个名为 `defconfig` (即default configuration) 的默认配置，该配置文件位于各个架构目录的 `configs` 文件夹下，例如对于RISC-V而言，其默认配置文件为 `arch/riscv/configs/defconfig`。使用 `make ARCH=riscv defconfig` 命令可以在内核根目录下生成一个名为 `.config` 的文件，包含了内核完整的配置，内核在编译时会根据 `.config` 进行编译。
+内核配置是用于配置是否启用内核的各项特性，内核会提供一个名为 `defconfig`（即default configuration）的默认配置，该配置文件位于各个架构目录的 `configs` 文件夹下，例如对于RISC-V而言，其默认配置文件为 `arch/riscv/configs/defconfig`。使用 `make ARCH=riscv defconfig` 命令可以在内核根目录下生成一个名为 `.config` 的文件，包含了内核完整的配置，内核在编译时会根据 `.config` 进行编译。
 
 配置之间存在相互的依赖关系，直接修改defconfig文件或者 `.config` 有时候并不能达到想要的效果，或是给进一步内核配置带来同步问题。因此如果需要修改配置一般采用 `make ARCH=riscv menuconfig` 的方式对内核进行配置。
 
@@ -132,11 +132,11 @@ $ make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu-  # 编译 RISC-V 平台内核
 - `CROSS_COMPILE` 指定使用的交叉编译工具链，例如指定 `CROSS_COMPILE=riscv64-linux-gnu-`，则编译时会采用 `riscv64-linux-gnu-gcc` 作为编译器，编译在 RISC-V 64 位平台上运行的 Linux 内核。
 
 
-## 4 实验步骤
+## 实验步骤
 
 **在执行每一条命令前，请你对将要进行的操作进行思考，给出的命令不需要全部执行，并且不是所有的命令都可以无条件执行，请不要直接复制粘贴命令去执行。**
 
-### 4.1 搭建实验环境环境
+### 搭建实验环境环境
 
 > 如果你在使用 Mac with Apple Silicon, 请直接使用 Docker Desktop 进行课程实验。
 > Docker Desktop 的安装可以参考 [Docker Desktop for Apple silicon](https://docs.docker.com/desktop/mac/apple-silicon/)。
@@ -162,7 +162,7 @@ $ sudo apt install qemu-system-misc
 $ sudo apt install gdb-multiarch
 ```
 
-### 4.2 获取 Linux 源码和已经编译好的文件系统
+### 获取 Linux 源码和已经编译好的文件系统
 
 从 [https://www.kernel.org](https://www.kernel.org) 下载最新的 Linux 源码。
 > 截至写作时，最新的 Linux 内核版本是 6.6-rc1.
@@ -178,7 +178,7 @@ $ ls
 rootfs.img  # 已经构建完成的根文件系统的镜像
 ```
 
-### 4.3 编译 linux 内核
+### 编译 Linux 内核
 
 ```bash
 $ cd path/to/linux
@@ -188,7 +188,7 @@ $ make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- -j$(nproc)   # 编译
 
 > 使用多线程编译一般会耗费大量内存，如果 `-j` 选项导致内存耗尽 (out of memory)，请尝试调低线程数，比如 `-j4`, `-j8` 等。
 
-### 4.4 使用QEMU运行内核
+### 使用 QEMU 运行内核
 
 ```bash
 $ qemu-system-riscv64 -nographic -machine virt -kernel path/to/linux/arch/riscv/boot/Image \
@@ -197,7 +197,7 @@ $ qemu-system-riscv64 -nographic -machine virt -kernel path/to/linux/arch/riscv/
 ```
 退出 QEMU 的方法为：使用 Ctrl+A，**松开**后再按下 X 键即可退出 QEMU。
 
-### 4.5 使用 GDB 对内核进行调试
+### 使用 GDB 对内核进行调试
 
 > 这一步需要开启两个 Terminal Session，一个 Terminal 使用 QEMU 启动 Linux，另一个 Terminal 使用 GDB 与 QEMU 远程通信（使用 tcp::1234 端口）进行调试。
 
@@ -215,7 +215,7 @@ $ gdb-multiarch path/to/linux/vmlinux
 (gdb) quit                  # 退出 gdb
 ```
 
-## 5 实验任务与要求
+## 实验任务与要求
 
 - 请各位同学独立完成作业，任何抄袭行为都将使本次作业判为0分。
 - 编译内核，使用 QEMU 启动后，远程连接 GDB 进行调试，并尝试使用 GDB 的各项命令（如 `backtrace`, `finish`, `frame`, `info`, `break`, `display`, `next`, `layout` 等）。
