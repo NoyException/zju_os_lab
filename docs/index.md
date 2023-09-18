@@ -17,9 +17,9 @@
 文档采用了 [mkdocs-material](https://squidfunk.github.io/mkdocs-material/) 工具构建和部署。如果想在本地渲染：
 
 ```bash
-$ pip3 install mkdocs-material mkdocs-heti-plugin   # 安装 mkdocs 及插件
-$ git clone https://github.com/ZJU-SEC/os23fall-stu # clone 本 repo
-$ mkdocs serve                                      # 本地渲染
+$ pip3 install mkdocs-material mkdocs-heti-plugin==0.1.5   # 安装 mkdocs 及插件
+$ git clone https://github.com/ZJU-SEC/os23fall-stu        # clone 本 repo
+$ mkdocs serve                                             # 本地渲染
 INFO     -  Building documentation...
 INFO     -  Cleaning site directory
 ...
