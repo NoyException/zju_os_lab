@@ -1,6 +1,6 @@
 # Lab 1: RV64 内核引导与时钟中断处理
 
-## 1 实验目的
+## 实验目的
 * 学习 RISC-V 汇编， 编写 head.S 实现跳转到内核运行的第一个 C 函数。
 * 学习 OpenSBI，理解 OpenSBI 在实验中所起到的作用，并调用 OpenSBI 提供的接口完成字符的输出。
 * 学习 Makefile 相关知识， 补充项目中的 Makefile 文件， 来完成对整个工程的管理。
@@ -9,15 +9,15 @@
 * 编写 trap 处理函数，完成对特定 trap 的处理。
 * 调用 OpenSBI 提供的接口，完成对时钟中断事件的设置。
 
-## 2 实验环境
+## 实验环境
 
 - Environment in Lab0
 
-## 3 实验基础知识介绍
+## 实验基础知识介绍
 
 
-### 3.1 RV64 内核引导
-#### 3.1.1 前置知识
+### RV64 内核引导
+#### 前置知识
 
 为了顺利完成 OS 实验，我们需要一些前置知识和较多调试技巧。在 OS 实验中我们需要 **RISC-V汇编** 的前置知识，课堂上不会讲授，请同学们通过阅读以下四份文档自学：
 
@@ -28,7 +28,7 @@
 
 > 注：RISC-V 手册（中文）中有一些 Typo，请谨慎参考。
 
-#### 3.1.2 RISC-V 的三种特权模式
+#### RISC-V 的三种特权模式
 
 RISC-V 有三个特权模式：U (user) 模式、S (supervisor) 模式和 M (machine) 模式。
 
@@ -60,7 +60,7 @@ Bootloader 是操作系统内核运行之前，用于初始化硬件，加载操
 +------------+         +--------------+         +----------+
 ```
 
-#### 3.1.4 SBI 与 OpenSBI
+#### SBI 与 OpenSBI
 
 SBI (Supervisor Binary Interface) 是 S-mode 的 Kernel 和 M-mode 执行环境之间的接口规范，而 OpenSBI 是一个 RISC-V SBI 规范的开源实现。RISC-V 平台和 SoC 供应商可以自主扩展 OpenSBI 实现，以适应特定的硬件配置。
 
@@ -74,11 +74,11 @@ SBI (Supervisor Binary Interface) 是 S-mode 的 Kernel 和 M-mode 执行环境�
 
 如果你对 RISC-V 架构的 Boot 流程有更多的好奇，可以参考这份 [bootflow](https://riscv.org/wp-content/uploads/2019/12/Summit_bootflow.pdf)。
 
-#### 3.1.5 Makefile
+#### Makefile
 
 Makefile 可以简单的认为是一个工程文件的编译规则，描述了整个工程的编译和链接流程。在 Lab0 中我们已经使用了 make 工具利用 Makefile 文件来管理整个工程。在阅读了 [Makefile介绍](https://seisman.github.io/how-to-write-makefile/introduction.html) 这一章节后，同学们可以根据工程文件夹里 Makefile 的代码来掌握一些基本的使用技巧。
 
-#### 3.1.6 内联汇编
+#### 内联汇编
 内联汇编（通常由 asm 或者 \_\_asm\_\_ 关键字引入）提供了将汇编语言源代码嵌入 C 程序的能力。
 内联汇编的详细介绍请参考 [Assembler Instructions with C Expression Operands](https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html) 。
 下面简要介绍一下这次实验会用到的一些内联汇编知识：
@@ -107,7 +107,7 @@ Makefile 可以简单的认为是一个工程文件的编译规则，描述了�
 
 这四部分中后三部分不是必须的。
 
-#### 示例一
+##### 示例一
 
 ```c
 unsigned long long s_example(unsigned long long type,unsigned long long arg0) {
@@ -127,7 +127,7 @@ unsigned long long s_example(unsigned long long type,unsigned long long arg0) {
 
 输入输出部分中，`[type] "r" (type)`代表着将 `()` 中的变量 `type` 放入寄存器中（`"r"` 指放入寄存器，如果是 `"m"` 则为放入内存），并且绑定到 `[]` 中命名的符号中去。`[ret_val] "=r" (ret_val)` 代表着将汇编指令中 `%[ret_val]` 的值更新到变量 `ret_val`中。
 
-#### 示例二
+##### 示例二
 
 ```c
 #define write_csr(reg, val) ({
@@ -145,8 +145,8 @@ unsigned long long s_example(unsigned long long type,unsigned long long arg0) {
     __asm__ volatile ("csrw " "sstatus" ", %0" :: "r"(val)); })
 ```
 
-#### 3.1.7 编译相关知识介绍
-#### vmlinux.lds
+#### 编译相关知识介绍
+##### vmlinux.lds
 
 GNU ld 即链接器，用于将 `*.o` 文件（和库文件）链接成可执行文件。在操作系统开发中，为了指定程序的内存布局，ld 使用链接脚本（Linker Script）来控制，在 Linux Kernel 中链接脚本被命名为 vmlinux.lds。更多关于 ld 的介绍可以使用 `man ld` 命令。
 
@@ -229,7 +229,7 @@ SECTIONS
 
 更多有关链接脚本语法可以参考[这里](https://sourceware.org/binutils/docs/ld/Scripts.html)。
 
-#### vmlinux
+##### vmlinux
 
 vmlinux 通常指 Linux Kernel 编译出的可执行文件 (Executable and Linkable Format / ELF)，特点是未压缩的，带调试信息和符号表的。在整套 OS 实验中，vmlinux 通常指将你的代码进行编译，链接后生成的可供 QEMU 运行的 RV64 架构程序。如果对 vmlinux 使用 `file` 命令，你将看到如下信息：
 
@@ -238,7 +238,7 @@ $ file vmlinux
 vmlinux: ELF 64-bit LSB executable, UCB RISC-V, version 1 (SYSV), statically linked, not stripped
 ```
 
-#### System.map
+##### System.map
 
 System.map 是内核符号表（Kernel Symbol Table）文件，是存储了所有内核符号及其地址的一个列表。“符号”通常指的是函数名，全局变量名等等。使用 `nm vmlinux` 命令即可打印 vmlinux 的符号表，符号表的样例如下：
 
@@ -257,10 +257,10 @@ ffffffe000000190 t debug_kernel
 
 使用 System.map 可以方便地读出函数或变量的地址，为 Debug 提供了方便。
 
-### 3.2 RV64 时钟中断处理
+### RV64 时钟中断处理
 如果完成了 **3.1** 中的 **RV64 内核引导**，我们能成功地将一个最简单的 OS 启动起来， 但还没有办法与之交互。我们在课程中讲过操作系统启动之后由**事件**（ **event** ）驱动，在本次实验的后半部分中，我们将引入一种重要的事件 **trap**，trap 给了 OS 与硬件、软件交互的能力。在 **3.1** 中我们介绍了在 RISC-V 中有三种特权级 ( M 态、 S 态、 U 态 )， 在 Boot 阶段， OpenSBI 已经帮我们将 M 态的 trap 处理进行了初始化，这一部分不需要我们再去实现，因此后续我们重点关注 S 态的 trap 处理。
-#### 3.2.1 RISC-V 中的 Interrupt 和 Exception
-##### 3.2.1.1 什么是 Interrupt 和 Exception
+#### RISC-V 中的 Interrupt 和 Exception
+##### 什么是 Interrupt 和 Exception
 
 > We use the term **exception** to refer to an unusual condition occurring at run time **associated with an instruction** in the current RISC-V hart. We use the term **interrupt** to refer to an **external asynchronous event** that may cause a RISC-V hart to experience an unexpected transfer of control. We use the term **trap** to refer to **the transfer of control to a trap handler** caused by either an exception or an interrupt.
 
@@ -274,7 +274,7 @@ ffffffe000000190 t debug_kernel
 
 上文中的 `Trap` 描述的是一种控制转移的过程, 这个过程是由 `Interrupt` 或者 `Exception` 引起的。这里为了方便起见，我们在这里约定 `Trap` 为 `Interrput` 与 `Exception` 的总称。
 
-##### 3.2.1.2 相关寄存器
+##### 相关寄存器
 
 除了32个通用寄存器之外，RISC-V 架构还有大量的 **控制状态寄存器** `Control and Status Registers(CSRs)`，下面将介绍几个和 trap 机制相关的重要寄存器。
 
@@ -292,29 +292,29 @@ Machine Mode 异常相关寄寄存器:
 
 以上寄存器的详细介绍请同学们参考 [RISC-V Privileged Spec](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMFDQC-and-Priv-v1.11/riscv-privileged-20190608.pdf)
 
-##### 3.2.1.3 相关特权指令
+##### 相关特权指令
 - `ecall` ( Environment Call )，当我们在 S 态执行这条指令时，会触发一个 `ecall-from-s-mode-exception`，从而进入 M Mode 下的处理流程( 如设置定时器等 )；当我们在 U 态执行这条指令时，会触发一个 `ecall-from-u-mode-exception`，从而进入 S Mode 下的处理流程 ( 常用来进行系统调用 )。
 - `sret` 用于 S 态 trap 返回, 通过 `sepc` 来设置 `pc` 的值， 返回到之前程序继续运行。
 
 以上指令的详细介绍请同学们参考 [RISC-V Privileged Spec](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMFDQC-and-Priv-v1.11/riscv-privileged-20190608.pdf)
 
-#### 3.2.2 上下文处理
+#### 上下文处理
 由于在处理 trap 时，有可能会改变系统的状态。所以在真正处理 trap 之前，我们有必要对系统的当前状态进行保存，在处理完成之后，我们再将系统恢复至原先的状态，就可以确保之前的程序继续正常运行。
 这里的系统状态通常是指寄存器，这些寄存器也叫做CPU的上下文 ( `Context` ).
 
-#### 3.2.3 trap 处理程序
+#### trap 处理程序
 trap 处理程序根据 `scause` 的值， 进入不同的处理逻辑，在本次试验中我们需要关心的只有 `Superviosr Timer Interrupt` 。
 
-#### 3.2.4 时钟中断
+#### 时钟中断
 时钟中断需要 CPU 硬件的支持。CPU 以“时钟周期”为工作的基本时间单位，对逻辑门的时序电路进行同步。而时钟中断实际上就是“每隔若干个时钟周期执行一次的程序”。下面介绍与时钟中断相关的寄存器以及如何产生时钟中断。
 
 - `mtime` 与 `mtimecmp` ( Machine Timer Register )。 `mtime` 是一个实时计时器， 由硬件以恒定的频率自增。`mtimecmp` 中保存着下一次时钟中断发生的时间点，当 `mtime` 的值大于或等于 `mtimecmp` 的值，系统就会触发一次时钟中断。因此我们只需要更新 `mtimecmp` 中的值，就可以设置下一次时钟中断的触发点。 `OpenSBI` 已经为我们提供了更新 `mtimecmp` 的接口 `sbi_set_timer` ( 见 `lab1` 4.4节 )。
 - `mcounteren` ( Counter-Enable Registers )。由于 `mtime` 是属于 M 态的寄存器，我们在 S 态无法直接对其读写， 幸运的是 OpenSBI 在 M 态已经通过设置 `mcounteren` 寄存器的 `TM` 比特位， 让我们可以在 S 态中可以通过 `time` 这个**只读**寄存器读取到 `mtime`的当前值，相关汇编指令是 `rdtime`。
 
 以上寄存器的详细介绍请同学们参考 [RISC-V Privileged Spec](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMFDQC-and-Priv-v1.11/riscv-privileged-20190608.pdf)
-## 4 实验步骤
+## 实验步骤
 
-### 4.1 准备工程
+### 准备工程
 
 从 [repo](https://github.com/ZJU-SEC/os23fall-stu) 同步实验代码框架。为了减少大家的工作量，在这里我们提供了简化版的 `printk` 来输出格式化字符串。
 
@@ -359,21 +359,21 @@ trap 处理程序根据 `scause` 的值， 进入不同的处理逻辑，在本�
 - arch/riscv/kernel/trap.c
 - arch/riscv/kernel/clock.c
 
-### 4.2 RV64 内核引导
-#### 4.2.1 编写head.S
+### RV64 内核引导
+#### 编写head.S
 
 学习riscv的汇编。
 
 完成 arch/riscv/kernel/head.S 。我们首先为即将运行的第一个 C 函数设置程序栈（栈的大小可以设置为4KB），并将该栈放置在`.bss.stack` 段。接下来我们只需要通过跳转指令，跳转至 main.c 中的 `start_kernel` 函数即可。
 
 
-#### 4.2.2 完善 Makefile 脚本
+#### 完善 Makefile 脚本
 
 阅读文档中关于 [Makefile](#35-makefile) 的章节，以及工程文件中的 Makefile 文件，根据注释学会 Makefile 的使用规则后，补充 `lib/Makefile`，使工程得以编译。  
 
 完成此步后在工程根文件夹执行 make，可以看到工程成功编译出 vmlinux。
 
-#### 4.2.3 补充 `sbi.c`
+#### 补充 `sbi.c`
 
 OpenSBI 在 M 态，为 S 态提供了多种接口，比如字符串输入输出。因此我们需要实现调用 OpenSBI 接口的功能。给出函数定义如下：
 ```c
@@ -408,7 +408,7 @@ sbi_ecall 函数中，需要完成以下内容：
 |sbi_shutdown （关机）|0|0x08| 下面是实验指导中一些有用的信息：
 
 
-#### 4.2.4 修改 defs
+#### 修改 defs
 
 内联汇编的相关知识见[内联汇编](#36)。 
 
@@ -418,7 +418,7 @@ sbi_ecall 函数中，需要完成以下内容：
 
 如果完成到此处，你就已经可以在 qemu 运行 `make` 得到的内核，从而至少完成思考题 1～4 了。
 
-### 4.3 RV64 时钟中断处理
+### RV64 时钟中断处理
 
 * 准备工作，先修改 `vmlinux.lds` 以及 `head.S`
     ```
@@ -486,7 +486,7 @@ sbi_ecall 函数中，需要完成以下内容：
     boot_stack_top:
     ```
 
-#### 4.3.1 开启 trap 处理
+#### 开启 trap 处理
 在运行 `start_kernel` 之前，我们要对上面提到的 CSR 进行初始化，初始化包括以下几个步骤：
 
 1. 设置 `stvec`， 将 `_traps` ( `_trap` 在 4.3 中实现 ) 所表示的地址写入 `stvec`，这里我们采用 `Direct 模式`, 而 `_traps` 则是 trap 处理入口函数的基地址。
@@ -530,7 +530,7 @@ _start:
 ```
 > Debug 提示：可以先不实现 stvec 和 first time interrupt，先关注 sie 和 sstatus 是否设置正确。
 
-#### 4.3.2 实现上下文切换
+#### 实现上下文切换
 我们要使用汇编实现上下文切换机制， 包含以下几个步骤：
 
 1. 在 `arch/riscv/kernel/` 目录下添加 `entry.S` 文件。
@@ -566,7 +566,7 @@ _traps:
 ```
 > Debug 提示： 可以先不实现 call trap_handler， 先实现上下文切换逻辑。通过 gdb 跟踪各个寄存器，确保上下文的 save 与 restore 正确实现并正确返回。
 
-#### 4.3.3 实现 trap 处理函数
+#### 实现 trap 处理函数
 1. 在 `arch/riscv/kernel/` 目录下添加 `trap.c` 文件。
 2. 在 `trap.c` 中实现 trap 处理函数 `trap_handler()`, 其接收的两个参数分别是 `scause` 和 `sepc` 两个寄存器中的值。
 ```c
@@ -583,7 +583,7 @@ void trap_handler(unsigned long scause, unsigned long sepc) {
 }
 ```
 
-#### 4.3.4 实现时钟中断相关函数
+#### 实现时钟中断相关函数
 1. 在 `arch/riscv/kernel/` 目录下添加 `clock.c` 文件。
 2. 在 `clock.c` 中实现 get_cycles ( ) : 使用 `rdtime` 汇编指令获得当前 `time` 寄存器中的值。
 3. 在 `clock.c` 中实现 clock_set_next_event ( ) : 调用 `sbi_ecall`，设置下一个时钟中断事件。
@@ -609,7 +609,7 @@ void clock_set_next_event() {
 
 ```
 
-#### 4.3.5 编译及测试
+#### 编译及测试
 由于加入了一些新的 .c 文件，可能需要修改一些Makefile文件，请同学自己尝试修改，使项目可以编译并运行。
 
 下面是一个正确实现的输出样例。（ 仅供参考 ）
@@ -634,9 +634,9 @@ kernel is running!
 [S] Supervisor Mode Timer Interrupt
 ```
 
-## 5 其他架构的交叉编译——以 Aarch64 为例
+## 其他架构的交叉编译——以 Aarch64 为例
 
-### 5.1 交叉编译工具链的安装
+### 交叉编译工具链的安装
 那么如何安装不同架构的交叉编译工具链呢？最简单的方法是用 Ubuntu 自带的软件包管理器 `apt`，先找到有什么交叉编译工具可以装
 ```
 # 搜索包含 aarch64 的软件包，一般是交叉编译工具
@@ -647,7 +647,7 @@ sudo apt install gcc-aarch64-linux-gnu
 ```
 现在我们有 aarch64 的交叉编译工具链了，开始编译吧！
 
-### 5.2 怎么获得编译过程的中间产物
+### 怎么获得编译过程的中间产物
 **注意：这里说的“编译过程”包括预处理、编译、汇编、链接**
 
 对于 Linux kernel，编译命令和选项在不同架构之间都大同小异，一般遵循以下形式（类比 lab0 做过的 riscv64 即可）
