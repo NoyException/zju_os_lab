@@ -491,7 +491,7 @@ sbi_ecall 函数中，需要完成以下内容：
 
 1. 设置 `stvec`， 将 `_traps` ( `_trap` 在 4.3 中实现 ) 所表示的地址写入 `stvec`，这里我们采用 `Direct 模式`, 而 `_traps` 则是 trap 处理入口函数的基地址。
 2. 开启时钟中断，将 `sie[STIE]` 置 1。
-3. 设置第一次时钟中断，参考 `clock_set_next_event()` ( `clock_set_next_event()` 在 4.5 中介绍 ) 中的逻辑用汇编实现。
+3. 设置第一次时钟中断，参考 `clock_set_next_event()` ( `clock_set_next_event()` 在 4.3.4 中介绍 ) 中的逻辑用汇编实现。
 4. 开启 S 态下的中断响应， 将 `sstatus[SIE]` 置 1。
 
 按照下方模版修改 `arch/riscv/kernel/head.S`， 并补全 `_start` 中的逻辑。
@@ -576,7 +576,7 @@ void trap_handler(unsigned long scause, unsigned long sepc) {
     // 通过 `scause` 判断trap类型
     // 如果是interrupt 判断是否是timer interrupt
     // 如果是timer interrupt 则打印输出相关信息, 并通过 `clock_set_next_event()` 设置下一次时钟中断
-    // `clock_set_next_event()` 见 4.5 节
+    // `clock_set_next_event()` 见 4.3.4 节
     // 其他interrupt / exception 可以直接忽略
     
     // YOUR CODE HERE
