@@ -312,7 +312,7 @@ trap 处理程序根据 `scause` 的值， 进入不同的处理逻辑，在本�
 #### 时钟中断
 时钟中断需要 CPU 硬件的支持。CPU 以“时钟周期”为工作的基本时间单位，对逻辑门的时序电路进行同步。而时钟中断实际上就是“每隔若干个时钟周期执行一次的程序”。下面介绍与时钟中断相关的寄存器以及如何产生时钟中断。
 
-- `mtime` 与 `mtimecmp` ( Machine Timer Register )。 `mtime` 是一个实时计时器， 由硬件以恒定的频率自增。`mtimecmp` 中保存着下一次时钟中断发生的时间点，当 `mtime` 的值大于或等于 `mtimecmp` 的值，系统就会触发一次时钟中断。因此我们只需要更新 `mtimecmp` 中的值，就可以设置下一次时钟中断的触发点。 `OpenSBI` 已经为我们提供了更新 `mtimecmp` 的接口 `sbi_set_timer` ( 见 `lab1` 4.4节 )。
+- `mtime` 与 `mtimecmp` ( Machine Timer Register )。 `mtime` 是一个实时计时器， 由硬件以恒定的频率自增。`mtimecmp` 中保存着下一次时钟中断发生的时间点，当 `mtime` 的值大于或等于 `mtimecmp` 的值，系统就会触发一次时钟中断。因此我们只需要更新 `mtimecmp` 中的值，就可以设置下一次时钟中断的触发点。 `OpenSBI` 已经为我们提供了更新 `mtimecmp` 的接口 `sbi_set_timer` ( 见 `lab1` 4.2.3 节 )。
 - `mcounteren` ( Counter-Enable Registers )。由于 `mtime` 是属于 M 态的寄存器，我们在 S 态无法直接对其读写， 幸运的是 OpenSBI 在 M 态已经通过设置 `mcounteren` 寄存器的 `TM` 比特位， 让我们可以在 S 态中可以通过 `time` 这个**只读**寄存器读取到 `mtime`的当前值，相关汇编指令是 `rdtime`。
 
 以上寄存器的详细介绍请同学们参考 [RISC-V Privileged Spec](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMFDQC-and-Priv-v1.11/riscv-privileged-20190608.pdf)
@@ -358,10 +358,10 @@ trap 处理程序根据 `scause` 的值， 进入不同的处理逻辑，在本�
 
 完成 **RV64 时钟中断处理**，需要完善 / 添加以下文件：
 
-- arch/riscv/kernel/head.S
-- arch/riscv/kernel/entry.S
-- arch/riscv/kernel/trap.c
-- arch/riscv/kernel/clock.c
+- `arch/riscv/kernel/head.S`
+- `arch/riscv/kernel/entry.S`
+- `arch/riscv/kernel/trap.c`
+- `arch/riscv/kernel/clock.c`
 
 ### RV64 内核引导
 #### 编写head.S
@@ -373,7 +373,7 @@ trap 处理程序根据 `scause` 的值， 进入不同的处理逻辑，在本�
 
 #### 完善 Makefile 脚本
 
-阅读文档中关于 [Makefile](#35-makefile) 的章节，以及工程文件中的 Makefile 文件，根据注释学会 Makefile 的使用规则后，补充 `lib/Makefile`，使工程得以编译。  
+阅读文档中关于 [Makefile](#makefile) 的章节，以及工程文件中的 Makefile 文件，根据注释学会 Makefile 的使用规则后，补充 `lib/Makefile`，使工程得以编译。  
 
 完成此步后在工程根文件夹执行 make，可以看到工程成功编译出 vmlinux。
 
@@ -414,11 +414,11 @@ sbi_ecall 函数中，需要完成以下内容：
 
 #### 修改 defs
 
-内联汇编的相关知识见[内联汇编](#36)。 
+内联汇编的相关知识见[内联汇编](#_5)。 
 
 学习了解了以上知识后，补充 `arch/riscv/include/defs.h` 中的代码完成：
 
-补充完 `read_csr` 这个宏定义。这里有相关[示例](#_2)。
+补充完 `read_csr` 这个宏定义。这里有相关[示例](#_7)。
 
 如果完成到此处，你就已经可以在 qemu 运行 `make` 得到的内核，从而至少完成思考题 1～4 了。
 
@@ -493,7 +493,7 @@ sbi_ecall 函数中，需要完成以下内容：
 #### 开启 trap 处理
 在运行 `start_kernel` 之前，我们要对上面提到的 CSR 进行初始化，初始化包括以下几个步骤：
 
-1. 设置 `stvec`， 将 `_traps` ( `_trap` 在 4.3 中实现 ) 所表示的地址写入 `stvec`，这里我们采用 `Direct 模式`, 而 `_traps` 则是 trap 处理入口函数的基地址。
+1. 设置 `stvec`， 将 `_traps` ( `_traps` 在 4.3.2 中实现 ) 所表示的地址写入 `stvec`，这里我们采用 `Direct 模式`, 而 `_traps` 则是 trap 处理入口函数的基地址。
 2. 开启时钟中断，将 `sie[STIE]` 置 1。
 3. 设置第一次时钟中断，参考 `clock_set_next_event()` ( `clock_set_next_event()` 在 4.3.4 中介绍 ) 中的逻辑用汇编实现。
 4. 开启 S 态下的中断响应， 将 `sstatus[SIE]` 置 1。
@@ -539,7 +539,7 @@ _start:
 
 1. 在 `arch/riscv/kernel/` 目录下添加 `entry.S` 文件。
 2. 保存 CPU 的寄存器（上下文）到内存中（栈上）。
-3. 将 `scause` 和 `sepc` 中的值传入 trap 处理函数 `trap_handler` ( `trap_handler` 在 4.4 中介绍 ) ，我们将会在 `trap_handler` 中实现对 trap 的处理。
+3. 将 `scause` 和 `sepc` 中的值传入 trap 处理函数 `trap_handler` ( `trap_handler` 在 4.3.3 中介绍 ) ，我们将会在 `trap_handler` 中实现对 trap 的处理。
 4. 在完成对 trap 的处理之后， 我们从内存中（栈上）恢复CPU的寄存器（上下文）。
 5. 从 trap 中返回。
 
