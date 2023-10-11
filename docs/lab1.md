@@ -17,6 +17,7 @@
 
 
 ### RV64 内核引导
+
 #### 前置知识
 
 为了顺利完成 OS 实验，我们需要一些前置知识和较多调试技巧。在 OS 实验中我们需要 **RISC-V汇编** 的前置知识，课堂上不会讲授，请同学们通过阅读以下四份文档自学：
@@ -144,6 +145,9 @@ unsigned long long s_example(unsigned long long type,unsigned long long arg0) {
 ({
     __asm__ volatile ("csrw " "sstatus" ", %0" :: "r"(val)); })
 ```
+
+此外，这个示例中的 `({...})` 还涉及了一个 GNU 对 C 的扩展，可以参考 [Statements and Declarations in Expressions](https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html)。复合语句中的最后一项应该是一个表达式，后跟一个分号 `;` 该子表达式的值用作整个语句的值，可以用来实现类似“返回值”的效果。
+
 
 #### 编译相关知识介绍
 ##### vmlinux.lds
@@ -347,10 +351,10 @@ trap 处理程序根据 `scause` 的值， 进入不同的处理逻辑，在本�
 
 完成 **RV64 内核引导**，需要完善以下文件：
 
-- arch/riscv/kernel/head.S
-- lib/Makefile
-- arch/riscv/kernel/sbi.c
-- arch/riscv/include/defs.h
+- `arch/riscv/kernel/head.S`
+- `lib/Makefile`
+- `arch/riscv/kernel/sbi.c`
+- `arch/riscv/include/defs.h`
 
 完成 **RV64 时钟中断处理**，需要完善 / 添加以下文件：
 
@@ -657,11 +661,11 @@ make ARCH=xxx CROSS_COMPILE=some-certain-arch- <options> <files>
 
 比如，想获得 kernel 中 `xxx.c` 的预处理产物（回忆一下预处理做了什么）`xxx.i`，我们可以
 ```
-# 先 config
+# 先 config（根据实际需求，这里不一定是 defconfig，可选的 config 可以在 `arch/<ARCH>/configs` 下找到）
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
 
 # 然后指定要生成的文件
-make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- path/to/file/xxx.i
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- <path/to/file(no suffix)>.i
 ```
 
 课件里也给出了 `make` 工具。
@@ -676,6 +680,7 @@ make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- path/to/file/xxx.i
 5. Detail your steps about how to get `arch/arm64/kernel/sys.i`
 6. Find system call table of Linux v6.0 for `ARM32`, `RISC-V(32 bit)`, `RISC-V(64 bit)`, `x86(32 bit)`, `x86_64`
 List source code file, the whole system call table with macro expanded, screenshot every step.
+    - Tips: 开始之前可以先回顾一下[编译工具](lab0.md#_6)。
 7. Explain what is ELF file? Try readelf and objdump command on an ELF file, give screenshot of the output.
 Run an ELF file and cat `/proc/PID/maps` to give its memory layout.
 8. 在我们使用make run时， OpenSBI 会产生如下输出:
