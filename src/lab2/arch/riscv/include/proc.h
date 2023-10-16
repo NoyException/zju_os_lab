@@ -31,7 +31,7 @@ struct thread_struct {
 
 /* 线程数据结构 */
 struct task_struct {
-    struct thread_info* thread_info;
+    struct thread_info thread_info;
     uint64 state;    // 线程状态
     uint64 counter;  // 运行剩余时间
     uint64 priority; // 运行优先级 1最低 10最高
@@ -54,8 +54,3 @@ void switch_to(struct task_struct* next);
 
 /* dummy funciton: 一个循环程序, 循环输出自己的 pid 以及一个自增的局部变量 */
 void dummy();
-
-#ifdef TEST_SCHEDULE
-/* 单元测试初始化函数 */
-void test_init(int num_tasks);
-#endif
