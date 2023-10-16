@@ -44,6 +44,7 @@ test-debug: TEST
 
 clean:
 	${MAKE} -C lib clean
+	${MAKE} -C test clean
 	${MAKE} -C init clean
 	${MAKE} -C arch/riscv clean
 	$(shell test -f vmlinux && rm vmlinux)

@@ -9,12 +9,6 @@
 #define PRIORITY_MIN 1
 #define PRIORITY_MAX 10
 
-/**
- * new content for unit test
-*/
-#define COUNTER_SEED 29     // 生成用于 TEST_SCHEDULE 测试的 counter 序列的种子
-#define PRIORITY_SEED 17    // 生成用于 TEST_SCHEDULE 测试的 priority 序列的种子
-
 /* 用于记录 `线程` 的 `内核栈与用户栈指针` */
 /* (lab2 中无需考虑, 在这里引入是为了之后实验的使用) */
 struct thread_info {

@@ -82,13 +82,14 @@
 
 ### 准备工程
 * 此次实验基于 lab1 同学所实现的代码进行。
-* 从 `repo` 同步以下代码: `rand.h/rand.c`, `string.h/string.c`, `mm.h/mm.c`, `proc.h/proc.c`。并按照以下步骤将这些文件正确放置。
+* 从 `repo` 同步以下代码: `rand.h/rand.c`, `string.h/string.c`, `mm.h/mm.c`, `proc.h/proc.c`, `test.h/test_schedule.h`, `schedule_null.c/schedule_test.c` 以及新增的一些 Makefile 的变化。并按照以下步骤将这些文件正确放置。
 
     * `mm.h/mm.c` 提供了简单的物理内存管理接口
     * `rand.h/rand.c` 提供了 `rand()` 接口用以提供伪随机数序列
     * `string.h/string.c` 提供了 `memset` 接口用以初始化一段内存空间
     * `proc.h/proc.c` 是本次实验需要关注的重点
-
+    * `test.h/test_schedule.h` 提供了本次实验单元测试的测试接口
+    * `schedule_null.c/schedule_test.c` 提供了在 “加测试 / 不加测试” 两种情况下测试接口的代码实例
 
     ```
     .
@@ -102,10 +103,20 @@
     |           └── proc.c
     ├── include
     │   ├── rand.h
-    │   └── string.h
-    └── lib
-        ├── rand.c
-        └── string.c
+    │   ├── string.h
+    |   ├── test.h
+    |   └── schedule_test.h
+    |
+    ├── test
+    │   ├── schedule_null.c
+    │   ├── schedule_test.c
+    │   └── Makefile
+    |
+    ├── lib
+    |   ├── rand.c
+    |   └── string.c
+    |
+    └── Makefile
     ```
 
 * 在 lab2 中我们需要一些物理内存管理的接口, 在此我们提供了 `kalloc` 接口 ( 见`mm.c` ) 给同学。同学可以用 `kalloc` 来申请 4KB 的物理页。由于引入了简单的物理内存管理, 需要在 `_start` 的适当位置调用 `mm_init`, 来初始化内存管理系统, 并且在初始化时需要用一些自定义的宏, 需要修改 `defs.h`, 在 `defs.h` 添加如下内容：
@@ -136,7 +147,7 @@
 #define PRIORITY_MAX 10
 
 /* 用于记录 `线程` 的 `内核栈与用户栈指针` */
-/* (lab2中无需考虑, 在这里引入是为了之后实验的使用) */
+/* (lab2 中无需考虑, 在这里引入是为了之后实验的使用) */
 struct thread_info {
     uint64 kernel_sp;
     uint64 user_sp;
@@ -151,7 +162,7 @@ struct thread_struct {
 
 /* 线程数据结构 */
 struct task_struct {
-    struct thread_info* thread_info;
+    struct thread_info thread_info;
     uint64 state;    // 线程状态
     uint64 counter;  // 运行剩余时间
     uint64 priority; // 运行优先级 1最低 10最高
@@ -174,11 +185,6 @@ void switch_to(struct task_struct* next);
 
 /* dummy funciton: 一个循环程序, 循环输出自己的 pid 以及一个自增的局部变量 */
 void dummy();
-
-#ifdef TEST_SCHEDULE
-/* 单元测试初始化函数 */
-void test_init(int num_tasks);
-#endif
 ```
 
 ### 线程调度功能实现
@@ -221,10 +227,14 @@ void test_init(int num_tasks);
     struct task_struct* current;        // 指向当前运行线程的 `task_struct`
     struct task_struct* task[NR_TASKS]; // 线程数组, 所有的线程都保存在此
 
+    /**
+     * new content for unit test of 2023 OS lab2
+    */
+    extern uint64 task_test_priority[]; // test_init 后, 用于初始化 task[i].priority 的数组
+    extern uint64 task_test_counter[];  // test_init 后, 用于初始化 task[i].counter  的数组
+
     void task_init() {
-    #ifdef TEST_SCHEDULE
         test_init(NR_TASKS);
-    #endif
         // 1. 调用 kalloc() 为 idle 分配一个物理页
         // 2. 设置 state 为 TASK_RUNNING;
         // 3. 由于 idle 不参与调度 可以将其 counter / priority 设置为 0
@@ -234,8 +244,7 @@ void test_init(int num_tasks);
         /* YOUR CODE HERE */
 
         // 1. 参考 idle 的设置, 为 task[1] ~ task[NR_TASKS - 1] 进行初始化
-        // 2. 其中每个线程的 state 为 TASK_RUNNING, counter 为 0, priority 使用 rand() 来设置, pid 为该线程在线程数组中的下标。
-        //      但如果 TEST_SCHEDULE 宏已经被 define，那么为了单元测试的需要，进行如下赋值：
+        // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，为了单元测试的需要，counter 和 priority 进行如下赋值：
         //      task[i].counter  = task_test_counter[i];
         //      task[i].priority = task_test_priority[i];
         // 3. 为 task[1] ~ task[NR_TASKS - 1] 设置 `thread_struct` 中的 `ra` 和 `sp`,
@@ -257,25 +266,25 @@ void test_init(int num_tasks);
     // arch/riscv/kernel/proc.c
 
     void dummy() {
-    #ifnedf TEST_SCHEDULE
+        schedule_test();
         uint64 MOD = 1000000007;
         uint64 auto_inc_local_var = 0;
         int last_counter = -1;
         while(1) {
-            if (last_counter == -1 || current->counter != last_counter) {
+            if ((last_counter == -1 || current->counter != last_counter) && current->counter > 0) {
+                if(current->counter == 1){
+                    --(current->counter);   // forced the counter to be zero if this thread is going to be scheduled
+                }                           // in case that the new counter is also 1, leading the information not printed.
                 last_counter = current->counter;
                 auto_inc_local_var = (auto_inc_local_var + 1) % MOD;
                 printk("[PID = %d] is running. auto_inc_local_var = %d\n", current->pid, auto_inc_local_var);
             }
         }
-    #else
-        ...
-    #endif
     }
     ```
 > Debug 提示： 可以用 printk 打印更多的信息
 
-* 当线程在运行时, 由于时钟中断的触发, 会将当前运行线程的上下文环境保存在栈上。当线程再次被调度时, 会将上下文从栈上恢复, 但是当我们创建一个新的线程, 此时线程的栈为空, 当这个线程被调度时, 是没有上下文需要被恢复的, 所以我们需要为线程`第一次调度`提供一个特殊的返回函数 `__dummy`
+* 当线程在运行时, 由于时钟中断的触发, 会将当前运行线程的上下文环境保存在栈上。当线程再次被调度时, 会将上下文从栈上恢复, 但是当我们创建一个新的线程, 此时线程的栈为空, 当这个线程被调度时, 是没有上下文需要被恢复的, 所以我们需要为线程 **第一次调度** 提供一个特殊的返回函数 `__dummy`
 
 * 在 `entry.S` 添加 `__dummy`
     - 在`__dummy` 中将 sepc 设置为 `dummy()` 的地址, 并使用 `sret` 从中断中返回。
@@ -316,7 +325,7 @@ void test_init(int num_tasks);
 
         ret
     ```
-> Debug 提示： 可以尝试是否可以从 idle 正确切换到 process 1
+> Debug 提示： 在 `NR_TASKS = 1+1` 时, 可以尝试是否可以从 idle 正确切换到 process 1
 
 #### 实现调度入口函数
 * 实现 `do_timer()`, 并在 `时钟中断处理函数` 中调用。
@@ -361,14 +370,17 @@ void test_init(int num_tasks);
     ```
 
 ### 编译及测试
-- 由于加入了一些新的 .c 文件, 可能需要修改一些Makefile文件, 请同学自己尝试修改, 使项目可以编译并运行。
+- 由于加入了一些新的 .c 文件, 可能需要修改一些 Makefile 文件, 请同学自己尝试修改, 使项目可以编译并运行。
 - 由于本次实验需要完成两个调度算法, 因此需要两种调度算法可以使用[`gcc –D`](https://www.rapidtables.com/code/linux/gcc/gcc-d.html)选项进行控制。
     - DSJF （短作业优先调度）。
     - DPRIORITY （优先级调度）。
     - 在`proc.c`中使用 `#ifdef` , `#endif` 来控制代码。 修改顶层Makefile为 `CFLAG = ${CF} ${INCLUDE} -DSJF` 或 `CFLAG = ${CF} ${INCLUDE} -DPRIORITY` (作业提交的时候 `Makefile` 选择任意一个都可以)
-- 本次实验引入了少量的测试样例, 可以通过 `TEST_SCHEDULE` 宏控制。 测试代码中，为两种调度算法分别提供了 `NR_TASKS` 为 52，32，16，8，4 这 5 种情况下的测试样例。
+- 本次实验引入了少量的测试样例, 可以通过 `make` 命令（如 `make TEST`,`make test-run`,`make test-debug` ）控制，详见根目录的新 Makefile 文件。
+    
+    为了大家测试方便，测试的源代码已经给出在 `/src/lab2/test/schedule_test.c` 里, 各位同学按需取用。
+    测试代码中，为两种调度算法分别提供了 `NR_TASKS` 为 16，8，4 这 3 种情况下的测试样例。
 
-    在提交报告的时候，你需要提交 `TEST_SCHEDULE` 测试成功的截图，两种调度算法都至少需要通过 `NR_TASKS = 32` 情况下的测试。以短作业优先调度算法为例，`#define NR_TASKS (1 + 31)` 情况下，测试成功的输出示例：
+    在提交报告的时候，你需要提交 `TEST_SCHEDULE` 测试成功的截图，两种调度算法都至少需要通过 `NR_TASKS = 4` 情况下的测试。以短作业优先调度算法为例，`#define NR_TASKS (1+3)` 情况下，测试成功的输出示例：
     ```plaintext
     OpenSBI v0.9
       ____                    _____ ____ _____
@@ -391,31 +403,66 @@ void test_init(int num_tasks);
     idle process is running!
 
     ...
-    switch to [PID = 5 COUNTER = 154]
-    F
-    [S] Supervisor Mode Timer Interrupt
+    switch to [PID = 1 COUNTER = 4]
+    B
+    B[S] Supervisor Mode Timer Interrupt
+    B
+    BB[S] Supervisor Mode Timer Interrupt
+    B
+    BBB[S] Supervisor Mode Timer Interrupt
+    B
+    BBBB[S] Supervisor Mode Timer Interrupt
 
-    switch to [PID = 16 COUNTER = 157]
-    Q
-    [S] Supervisor Mode Timer Interrupt
-
-    switch to [PID = 3 COUNTER = 176]
+    switch to [PID = 3 COUNTER = 8]
     D
-    [S] Supervisor Mode Timer Interrupt
+    BBBBD[S] Supervisor Mode Timer Interrupt
+    D
+    BBBBDD[S] Supervisor Mode Timer Interrupt
+    D
+    BBBBDDD[S] Supervisor Mode Timer Interrupt
+    D
+    BBBBDDDD[S] Supervisor Mode Timer Interrupt
+    D
+    BBBBDDDDD[S] Supervisor Mode Timer Interrupt
+    D
+    BBBBDDDDDD[S] Supervisor Mode Timer Interrupt
+    D
+    BBBBDDDDDDD[S] Supervisor Mode Timer Interrupt
+    D
+    BBBBDDDDDDDD[S] Supervisor Mode Timer Interrupt
 
-    switch to [PID = 7 COUNTER = 183]
-    H
-    [S] Supervisor Mode Timer Interrupt
+    switch to [PID = 2 COUNTER = 9]
+    C
+    BBBBDDDDDDDDC[S] Supervisor Mode Timer Interrupt
+    C
+    BBBBDDDDDDDDCC[S] Supervisor Mode Timer Interrupt
+    C
+    BBBBDDDDDDDDCCC[S] Supervisor Mode Timer Interrupt
+    C
+    BBBBDDDDDDDDCCCC[S] Supervisor Mode Timer Interrupt
+    C
+    BBBBDDDDDDDDCCCCC[S] Supervisor Mode Timer Interrupt
+    C
+    BBBBDDDDDDDDCCCCCC[S] Supervisor Mode Timer Interrupt
+    C
+    BBBBDDDDDDDDCCCCCCC[S] Supervisor Mode Timer Interrupt
+    C
+    BBBBDDDDDDDDCCCCCCCC[S] Supervisor Mode Timer Interrupt
+    C
+    BBBBDDDDDDDDCCCCCCCCC
+    NR_TASKS = 4, SJF test passed!
 
-    switch to [PID = 6 COUNTER = 191]
-    G
-    Test Done, output = cROMVbYdSPNUXWKZeELaTJIBfCFQDHG
-    NR_TASKS = 32, SJF test passed!
+    [S] Supervisor Mode Timer Interrupt
 
     ...
     ```
 
-- 短作业优先调度输出示例 (为了便于展示, 这里一共只初始化了 4 个线程) 同学们最后提交时需要 保证 NR_TASKS 为 32 不变
+
+
+> 注：下面的输出示例跟 `make TEST` 的测试样例无关。若是自己的测试输出跟下面的输出实例不一致，是正常现象。
+
+- 短作业优先调度输出示例 (为了便于展示, 这里一共只初始化了 4 个线程) 同学们最后提交时需要 保证 `NR_TASKS` 为 16 不变
+
     ```plaintext
     OpenSBI v0.9
       ____                    _____ ____ _____
@@ -472,7 +519,9 @@ void test_init(int num_tasks);
     [PID = 3] is running. auto_inc_local_var = 9
 
     ```
+
 - 优先级调度输出示例
+
     ```plaintext
     OpenSBI v0.9
       ____                    _____ ____ _____
@@ -532,7 +581,7 @@ void test_init(int num_tasks);
 
 2. 当线程第一次调用时, 其 `ra` 所代表的返回点是 `__dummy`。那么在之后的线程调用中 `context_switch` 中, `ra` 保存/恢复的函数返回点是什么呢? 请同学用 gdb 尝试追踪一次完整的线程切换流程, 并关注每一次 `ra` 的变换 (需要截图)。
 
-3. 运行课堂 demo 的 `hello-lkm` 代码, 回答下列问题:
+<!-- 3. 运行课堂 demo 的 `hello-lkm` 代码, 回答下列问题:
 
     a. 对运行结果进行截图, 展示同一进程内的线程哪些数据 share, 哪些不 share
     
@@ -546,7 +595,7 @@ void test_init(int num_tasks);
 
     > 在编译 `lkm` 之前，需要首先编译 Linux 内核，我们可以使用命令 `zcat /proc/config.gz > .config` 来将当前运行的内核的配置直接复制到内核仓库中，然后直接进行 `make`。如果在编译的过程中遇到了部分选项没有配置的提示，可以一直敲回车来选择默认选项。
 
-    > 在编译完成以后，你需要阅读我们给出的 `lkm` 的 `Makefile` 来理解其具体行为，并将编译进行的目录指定为我们刚刚的内核目录（即是刚刚我们解压完成的名为 `WSL2-Linux-Kernel-linux-msft-wsl-5.10.16.3`，并进行了内核编译的目录），注意不用带上后面的 `build` 子目录路径，即可完成编译。
+    > 在编译完成以后，你需要阅读我们给出的 `lkm` 的 `Makefile` 来理解其具体行为，并将编译进行的目录指定为我们刚刚的内核目录（即是刚刚我们解压完成的名为 `WSL2-Linux-Kernel-linux-msft-wsl-5.10.16.3`，并进行了内核编译的目录），注意不用带上后面的 `build` 子目录路径，即可完成编译。 -->
 
 
 ## 作业提交
