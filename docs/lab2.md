@@ -129,7 +129,7 @@
     #define PGROUNDUP(addr) ((addr + PGSIZE - 1) & (~(PGSIZE - 1)))
     #define PGROUNDDOWN(addr) (addr & (~(PGSIZE - 1)))
     ```
-* 请在添加/修改上述文件代码之后，确保工程可以正常运行，之后再开始实现 `lab2` (有可能需要同学自己调整一些头文件的引入)。
+* 请在添加/修改上述文件代码之后，确保工程可以正常运行，之后再开始实现 `lab2` (有可能需要同学自己调整一些位置的 `Makefile` 和一些源代码文件中头文件的引入)。
 * 在 lab2 中需要同学需要修改并补全 `arch/riscv/include/proc.h` `arch/riscv/kernel/proc.c` 两个文件。
 * 本次实验需要实现两种不同的调度算法，如何控制代码逻辑见 **4.4**
 
