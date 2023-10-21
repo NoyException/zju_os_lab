@@ -38,7 +38,7 @@ start_address             end_address
 
 具体的虚拟内存布局可以[参考这里](https://elixir.bootlin.com/linux/v5.15/source/Documentation/riscv/vm-layout.rst)。
 
-> 在 `RISC-V Linux Kernel Space` 中有一段虚拟地址空间中的区域被称为 `direct mapping area`，为了方便访问内存，内核会预先把所有物理内存都映射至这一块区域，这种映射也被称为 `linear mapping`，因为改映射方式就是在物理地址上添加一个偏移，使得 `VA = PA + PA2VA_OFFSET`。在 RISC-V Linux Kernel 中这一段区域为 `0xffffffe000000000 ~ 0xffffffff00000000`, 共 124 GB 。
+> 在 `RISC-V Linux Kernel Space` 中有一段虚拟地址空间中的区域被称为 `direct mapping area`，为了方便访问内存，内核会预先把所有物理内存都映射至这一块区域，这种映射也被称为 `linear mapping`，因为改映射方式就是在物理地址上添加一个偏移，使得 `VA = PA + PA2VA_OFFSET`。在 RISC-V Linux Kernel 中这一段区域为 `0xffffffe000000000 ~ 0xffffffff00000000`，共 124 GB 。
 
 
 ### 3.2 RISC-V Virtual-Memory System (Sv39)
@@ -112,11 +112,11 @@ start_address             end_address
 ```
 
 * 0 ～ 9 bit: protection bits
-    * V : 有效位，当 V = 0, 访问该 PTE 会产生 Pagefault。
+    * V : 有效位，当 V = 0，访问该 PTE 会产生 Pagefault。
     * R : R = 1 该页可读。
     * W : W = 1 该页可写。
     * X : X = 1 该页可执行。
-    * U , G , A , D , RSW 本次实验中设置为 0 即可。
+    * U，G，A，D，RSW 本次实验中设置为 0 即可。
 * 具体介绍请阅读 [RISC-V Privileged Spec 4.4.1](https://www.five-embeddev.com/riscv-isa-manual/latest/supervisor.html#sec:sv39)
 
 
@@ -166,7 +166,7 @@ start_address             end_address
 ## 4 实验步骤
 ### 4.1 准备工程
 * 此次实验基于 lab3 同学所实现的代码进行。
-* 需要修改 `defs.h`, 在 `defs.h` **添加**如下内容：
+* 需要修改 `defs.h`，在 `defs.h` **添加**如下内容：
     ```c
     #define OPENSBI_SIZE (0x200000)
     
@@ -176,7 +176,7 @@ start_address             end_address
     
     #define PA2VA_OFFSET (VM_START - PHY_START)
     ```
-* 从 `repo` 同步以下代码: `vmlinux.lds.S`, `Makefile`。并按照以下步骤将这些文件正确放置。
+* 从 `repo` 同步以下代码: `vmlinux.lds`。并按照以下步骤将这些文件正确放置。
     ```
     .
     └── arch
@@ -185,7 +185,7 @@ start_address             end_address
                 └── vmlinux.lds
     ```
     <!-- 这里我们通过 `vmlinux.lds.S` 模版生成 `vmlinux.lds`文件。链接脚本中的 `ramv` 代表 `VMA ( Virtual Memory Address )` 即虚拟地址，`ram` 则代表 `LMA ( Load Memory Address )`, 即我们 OS image 被 load 的地址，可以理解为物理地址。使用以上的 vmlinux.lds 进行编译之后，得到的 `System.map` 以及 `vmlinux` 采用的都是虚拟地址，方便之后 Debug。 -->
-    新的链接脚本中的 `ramv` 代表 `VMA ( Virtual Memory Address )` 即虚拟地址，`ram` 则代表 `LMA ( Load Memory Address )`, 即我们 OS image 被 load 的地址，可以理解为物理地址。使用以上的 vmlinux.lds 进行编译之后，得到的 `System.map` 以及 `vmlinux` 中的符号采用的都是虚拟地址，方便之后 Debug。
+    新的链接脚本中的 `ramv` 代表 `VMA ( Virtual Memory Address )` 即虚拟地址，`ram` 则代表 `LMA ( Load Memory Address )`，即我们 OS image 被 load 的地址，可以理解为物理地址。使用以上的 vmlinux.lds 进行编译之后，得到的 `System.map` 以及 `vmlinux` 中的符号采用的都是虚拟地址，方便之后 Debug。
 * 从本实验开始我们需要使用刷新缓存的指令扩展，并自动在编译项目前执行 `clean` 任务来防止对头文件的修改无法触发编译任务。在项目顶层目录的 `Makefile` 中需要做如下更改：
     ```Makefile
     # Makefile
@@ -426,7 +426,7 @@ create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     ```
 
 ## 思考题
-1. 验证 `.text`, `.rodata` 段的属性是否成功设置，给出截图。
+1. 验证 `.text`，`.rodata` 段的属性是否成功设置，给出截图。
 2. 为什么我们在 `setup_vm` 中需要做等值映射?
 3. 在 Linux 中，是不需要做等值映射的。请探索一下不在 `setup_vm` 中做等值映射的方法。
 
