@@ -361,6 +361,9 @@ void dummy();
 
 ##### 优先级调度算法
 * 参考 [Linux v0.11 调度算法实现](https://elixir.bootlin.com/linux/0.11/source/kernel/sched.c#L122) 实现。
+
+    > 有部分同学表示这个算法与教科书上的“优先级调度算法”有所出入；或者是对于“测试样例里只对于首轮调度进行测试，无法体现‘优先级调度’的特点”抱有疑问，详情可以看[这个 issue](https://github.com/ZJU-SEC/os23fall-stu/issues/3)。
+
     ```c++
     // arch/riscv/kernel/proc.c
 
