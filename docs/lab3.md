@@ -20,25 +20,25 @@
 ### 3.1 Kernel 的虚拟内存布局
 
 ```
-start_address           end_address
-    0x0                 0x3fffffffff
-     │                       │
-┌────┘                 ┌─────┘
-↓        256G          ↓                                
+start_address             end_address
+    0x0                  0x3fffffffff
+     │                        │
+┌────┘                  ┌─────┘
+↓        256G           ↓                                
 ┌───────────────────────┬──────────┬────────────────┐
 │      User Space       │    ...   │  Kernel Space  │
 └───────────────────────┴──────────┴────────────────┘
-                                    ↑    256G      ↑
-                      ┌─────────────┘              │ 
-                      │                            │
-              0xffffffc000000000          0xffffffffffffffff
-                start_address                 end_address
+                                   ↑      256G      ↑
+                      ┌────────────┘                │ 
+                      │                             │
+              0xffffffc000000000           0xffffffffffffffff
+                start_address                  end_address
 ```
 通过上图我们可以看到 RV64 将 `0x0000004000000000` 以下的虚拟空间作为 `user space`。将 `0xffffffc000000000` 及以上的虚拟空间作为 `kernel space`。由于我们还未引入用户态程序，目前我们只需要关注 `kernel space`。
 
 具体的虚拟内存布局可以[参考这里](https://elixir.bootlin.com/linux/v5.15/source/Documentation/riscv/vm-layout.rst)。
 
-> 在 `RISC-V Linux Kernel Space` 中有一段区域被称为 `direct mapping area`，为了方便访问内存，内核会预先把所有物理内存都映射至这一块区域 ( PA + OFFSET == VA )， 这种映射也被称为 `linear mapping`。在 RISC-V Linux Kernel 中这一段区域为 `0xffffffe000000000 ~ 0xffffffff00000000`, 共 124 GB 。
+> 在 `RISC-V Linux Kernel Space` 中有一段虚拟地址空间中的区域被称为 `direct mapping area`，为了方便访问内存，内核会预先把所有物理内存都映射至这一块区域，这种映射也被称为 `linear mapping`，因为改映射方式就是在物理地址上添加一个偏移，使得 `VA = PA + PA2VA_OFFSET`。在 RISC-V Linux Kernel 中这一段区域为 `0xffffffe000000000 ~ 0xffffffff00000000`, 共 124 GB 。
 
 
 ### 3.2 RISC-V Virtual-Memory System (Sv39)
@@ -99,7 +99,7 @@ start_address           end_address
  -----------------------------------------------------------------------
 | Reserved |   PPN[2]   |   PPN[1]   |   PPN[0]   | RSW |D|A|G|U|X|W|R|V|
  -----------------------------------------------------------------------
-                                                     |   | | | | | | | |
+                                                     ↑   ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑
                                                      |   | | | | | | | `---- V - Valid
                                                      |   | | | | | | `------ R - Readable
                                                      |   | | | | | `-------- W - Writable
@@ -182,22 +182,36 @@ start_address           end_address
     └── arch
         └── riscv
             └── kernel
-                ├── Makefile
-                └── vmlinux.lds.S
+                └── vmlinux.lds
     ```
-    这里我们通过 `vmlinux.lds.S` 模版生成 `vmlinux.lds`文件。链接脚本中的 `ramv` 代表 `VMA ( Virtual Memory Address )` 即虚拟地址，`ram` 则代表 `LMA ( Load Memory Address )`, 即我们 OS image 被 load 的地址，可以理解为物理地址。使用以上的 vmlinux.lds 进行编译之后，得到的 `System.map` 以及 `vmlinux` 采用的都是虚拟地址，方便之后 Debug。
+    <!-- 这里我们通过 `vmlinux.lds.S` 模版生成 `vmlinux.lds`文件。链接脚本中的 `ramv` 代表 `VMA ( Virtual Memory Address )` 即虚拟地址，`ram` 则代表 `LMA ( Load Memory Address )`, 即我们 OS image 被 load 的地址，可以理解为物理地址。使用以上的 vmlinux.lds 进行编译之后，得到的 `System.map` 以及 `vmlinux` 采用的都是虚拟地址，方便之后 Debug。 -->
+    新的链接脚本中的 `ramv` 代表 `VMA ( Virtual Memory Address )` 即虚拟地址，`ram` 则代表 `LMA ( Load Memory Address )`, 即我们 OS image 被 load 的地址，可以理解为物理地址。使用以上的 vmlinux.lds 进行编译之后，得到的 `System.map` 以及 `vmlinux` 中的符号采用的都是虚拟地址，方便之后 Debug。
+* 从本实验开始我们需要使用刷新缓存的指令扩展，并自动在编译项目前执行 `clean` 任务来防止对头文件的修改无法触发编译任务。在项目顶层目录的 `Makefile` 中需要做如下更改：
+    ```Makefile
+    # Makefile
+    ...
+    ISA=rv64imafd_zifencei
+    ...
+    all: clean
+        ${MAKE} -C lib all
+        ${MAKE} -C test all
+        ${MAKE} -C init all
+        ${MAKE} -C arch/riscv all
+        @echo -e '\n'Build Finished OK
+    ...
+    ```
 
 ### 4.2 开启虚拟内存映射。
 在 RISC-V 中开启虚拟地址被分为了两步：`setup_vm` 以及 `setup_vm_final`，下面将介绍相关的具体实现。
 
 #### 4.2.1 `setup_vm` 的实现
-* 将 0x80000000 开始的 1GB 区域进行两次映射，其中一次是等值映射 ( PA == VA ) ，另一次是将其映射至高地址 ( PA + PV2VA_OFFSET == VA )。如下图所示：
+* 将 0x80000000 开始的 1GB 区域进行两次映射，其中一次是等值映射 ( PA == VA ) ，另一次是将其映射到 `direct mapping area` ( 使得 `PA + PV2VA_OFFSET == VA` )。如下图所示：
   ```text
   Physical Address
   -------------------------------------------
                        | OpenSBI | Kernel |
   -------------------------------------------
-                       ^
+                       ↑
                   0x80000000
                        ├───────────────────────────────────────────────────┐
                        |                                                   |
@@ -205,7 +219,7 @@ start_address           end_address
   -----------------------------------------------------------------------------------------------
                        | OpenSBI | Kernel |                                | OpenSBI | Kernel |
   -----------------------------------------------------------------------------------------------
-                       ^                                                   ^
+                       ↑                                                   ↑
                   0x80000000                                       0xffffffe000000000
   ```
 * 完成上述映射之后，通过 `relocate` 函数，完成对 `satp` 的设置，以及跳转到对应的虚拟地址。
@@ -279,7 +293,7 @@ boot_stack:
 
 
 #### 4.2.2 `setup_vm_final` 的实现
-* 由于 setup_vm_final 中需要申请页面的接口， 应该在其之前完成内存管理初始化， 可能需要修改 mm.c 中的代码，mm.c 中初始化的函数接收的起始结束地址需要调整为虚拟地址。
+* 由于 `setup_vm_final` 中需要申请页面的接口，应该在其之前完成内存管理初始化，可能需要修改 `mm.c` 中的代码，`mm.c` 中初始化的函数接收的起始结束地址需要调整为虚拟地址。
 * 对 所有物理内存 (128M) 进行映射，并设置正确的权限。
   ```text
   Physical Address
@@ -288,24 +302,25 @@ boot_stack:
   --------------------------------------------------------
            | OpenSBI | Kernel |               |
   --------------------------------------------------------
-           ^                                  ^
-      0x80000000                              └───────────────────────────────────────────────────┐
-           └───────────────────────────────────────────────────┐                                  |
-                                                               |                                  |
-                                                            VM_START                              |
-  Virtual Address                                              ↓                                  ↓
-  ----------------------------------------------------------------------------------------------------
-                                                               | OpenSBI | Kernel |               |
-  -----------------------------------------------------------------------------------------------------
-                                                               ^
-                                                       0xffffffe000000000
+           ↑                                  ↑
+      0x80000000                              └────────────────────────┐
+           └────────────────────────┐                                  |
+                                    |                                  |
+                                 VM_START                              |
+  Virtual Address                   ↓                                  ↓
+  -------------------------------------------------------------------------
+                                    | OpenSBI | Kernel |               |
+  -------------------------------------------------------------------------
+                                    ↑
+                            0xffffffe000000000
   ```
 
 
 * 不再需要进行等值映射
-* 不再需要将 OpenSBI 的映射至高地址，因为 OpenSBI 运行在 M 态， 直接使用的物理地址。
+* 不再需要将 OpenSBI 的映射到 `direct mapping area`，因为 OpenSBI 运行在 M 态， 直接使用的物理地址。
 * 采用三级页表映射。
-* 在 head.S 中 适当的位置调用 setup_vm_final 。
+* 在 head.S 中 适当的位置调用 `setup_vm_final`。
+* <font color="#ff0000">请不要修改 create_mapping 的函数声明，并注意阅读下方对参数的描述。该函数会被用于测试实验的正确性。</font><br />
 ```c
 // arch/riscv/kernel/vm.c 
 
@@ -339,13 +354,14 @@ void setup_vm_final(void) {
 }
 
 
-/* 创建多级页表映射关系 */
-create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, int perm) {
+/**** 创建多级页表映射关系 *****/
+/* 不要修改该接口的参数和返回值 */
+create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     /*
     pgtbl 为根页表的基地址
     va, pa 为需要映射的虚拟地址、物理地址
-    sz 为映射的大小
-    perm 为映射的读写权限
+    sz 为映射的大小，单位为字节
+    perm 为映射的权限 (即页表项的低 8 位)
 
     创建多级页表的时候可以使用 kalloc() 来获取一页作为页表目录
     可以使用 V bit 来判断页表项是否存在
