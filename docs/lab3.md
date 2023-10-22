@@ -1,23 +1,23 @@
 # Lab 3: RV64 虚拟内存管理
 
-## 1 实验目的
+## 实验目的
 * 学习虚拟内存的相关知识，实现物理地址到虚拟地址的切换。
 * 了解 RISC-V 架构中 SV39 分页模式，实现虚拟地址到物理地址的映射，并对不同的段进行相应的权限设置。
 
-## 2 实验环境
+## 实验环境
 
 * Environment in previous labs
 
-## 3 背景知识
+## 背景知识
 
-### 3.0 前言
+### 前言
 在 Lab2 中我们赋予了操作系统对多个线程调度以及并发执行的能力，由于目前这些线程都是内核线程，因此他们可以共享运行空间，即运行不同线程对空间的修改是相互可见的。但是如果我们需要线程相互**隔离**，以及在多线程的情况下更加**高效**的使用内存，就必须引入`虚拟内存`这个概念。
 
 虚拟内存可以为正在运行的进程提供独立的内存空间，制造一种每个进程的内存都是独立的假象。同时虚拟内存到物理内存的映射也包含了对内存的访问权限，方便内核完成权限检查。
 
 在本次实验中，我们需要关注内核如何**开启虚拟地址**以及通过设置页表来实现**地址映射**和**权限控制**。
 
-### 3.1 Kernel 的虚拟内存布局
+### Kernel 的虚拟内存布局
 
 ```
 start_address             end_address
@@ -41,8 +41,8 @@ start_address             end_address
 > 在 `RISC-V Linux Kernel Space` 中有一段虚拟地址空间中的区域被称为 `direct mapping area`，为了方便访问内存，内核会预先把所有物理内存都映射至这一块区域，这种映射也被称为 `linear mapping`，因为改映射方式就是在物理地址上添加一个偏移，使得 `VA = PA + PA2VA_OFFSET`。在 RISC-V Linux Kernel 中这一段区域为 `0xffffffe000000000 ~ 0xffffffff00000000`，共 124 GB 。
 
 
-### 3.2 RISC-V Virtual-Memory System (Sv39)
-#### 3.2.1 `satp` Register（Supervisor Address Translation and Protection Register）
+### RISC-V Virtual-Memory System (Sv39)
+#### `satp` Register（Supervisor Address Translation and Protection Register）
 ```c
  63      60 59                  44 43                                0
  ---------------------------------------------------------------------
@@ -70,7 +70,7 @@ start_address             end_address
 * PPN ( Physical Page Number ) ：顶级页表的物理页号。我们的物理页的大小为 4KB， PA >> 12 == PPN。
 * 具体介绍请阅读 [RISC-V Privileged Spec 4.1.10](https://www.five-embeddev.com/riscv-isa-manual/latest/supervisor.html#sec:satp) 。
 
-#### 3.2.2 RISC-V Sv39 Virtual Address and Physical Address
+#### RISC-V Sv39 Virtual Address and Physical Address
 ```c
      38        30 29        21 20        12 11                           0
      ---------------------------------------------------------------------
@@ -93,7 +93,7 @@ start_address             end_address
 * 具体介绍请阅读 [RISC-V Privileged Spec 4.4.1](https://www.five-embeddev.com/riscv-isa-manual/latest/supervisor.html#sec:sv39) 。
 
 
-#### 3.2.3 RISC-V Sv39 Page Table Entry
+#### RISC-V Sv39 Page Table Entry
 ```c
  63      54 53        28 27        19 18        10 9   8 7 6 5 4 3 2 1 0
  -----------------------------------------------------------------------
@@ -120,7 +120,7 @@ start_address             end_address
 * 具体介绍请阅读 [RISC-V Privileged Spec 4.4.1](https://www.five-embeddev.com/riscv-isa-manual/latest/supervisor.html#sec:sv39)
 
 
-#### 3.2.4 RISC-V Address Translation
+#### RISC-V Address Translation
 虚拟地址转化为物理地址流程图如下，具体描述见 [RISC-V Privileged Spec 4.3.2](https://www.five-embeddev.com/riscv-isa-manual/latest/supervisor.html#sv32algorithm) :
 ```text
                                 Virtual Address                                     Physical Address
@@ -163,8 +163,8 @@ start_address             end_address
  └────────┘
 ```
 
-## 4 实验步骤
-### 4.1 准备工程
+## 实验步骤
+### 准备工程
 * 此次实验基于 lab3 同学所实现的代码进行。
 * 需要修改 `defs.h`，在 `defs.h` **添加**如下内容：
     ```c
@@ -201,10 +201,10 @@ start_address             end_address
     ...
     ```
 
-### 4.2 开启虚拟内存映射。
+### 开启虚拟内存映射。
 在 RISC-V 中开启虚拟地址被分为了两步：`setup_vm` 以及 `setup_vm_final`，下面将介绍相关的具体实现。
 
-#### 4.2.1 `setup_vm` 的实现
+#### `setup_vm` 的实现
 * 将 0x80000000 开始的 1GB 区域进行两次映射，其中一次是等值映射 ( PA == VA ) ，另一次是将其映射到 `direct mapping area` ( 使得 `PA + PV2VA_OFFSET == VA` )。如下图所示：
   ```text
   Physical Address
@@ -292,7 +292,7 @@ boot_stack:
 
 
 
-#### 4.2.2 `setup_vm_final` 的实现
+#### `setup_vm_final` 的实现
 * 由于 `setup_vm_final` 中需要申请页面的接口，应该在其之前完成内存管理初始化，可能需要修改 `mm.c` 中的代码，`mm.c` 中初始化的函数接收的起始结束地址需要调整为虚拟地址。
 * 对 所有物理内存 (128M) 进行映射，并设置正确的权限。
   ```text
@@ -368,7 +368,7 @@ create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     */
 }
 ```
-### 4.3 编译及测试
+### 编译及测试
 - 由于加入了一些新的 .c 文件，可能需要修改一些Makefile文件，请同学自己尝试修改，使项目可以编译并运行。
 - 输出示例
     ```bash
