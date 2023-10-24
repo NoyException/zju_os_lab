@@ -9,6 +9,10 @@ _start:
 
     la sp, boot_stack_top
 
+    jal ra, mm_init # initialize physical memory
+
+    jal ra, task_init # initialize task threads
+
     # ----------------------
 
     # set stvec = _traps
