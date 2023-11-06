@@ -38,7 +38,7 @@ start_address             end_address
 
 具体的虚拟内存布局可以[参考这里](https://elixir.bootlin.com/linux/v5.15/source/Documentation/riscv/vm-layout.rst)。
 
-> 在 `RISC-V Linux Kernel Space` 中有一段虚拟地址空间中的区域被称为 `direct mapping area`，为了方便访问内存，内核会预先把所有物理内存都映射至这一块区域，这种映射也被称为 `linear mapping`，因为改映射方式就是在物理地址上添加一个偏移，使得 `VA = PA + PA2VA_OFFSET`。在 RISC-V Linux Kernel 中这一段区域为 `0xffffffe000000000 ~ 0xffffffff00000000`，共 124 GB 。
+> 在 `RISC-V Linux Kernel Space` 中有一段虚拟地址空间中的区域被称为 `direct mapping area`，为了方便访问内存，内核会预先把所有物理内存都映射至这一块区域，这种映射也被称为 `linear mapping`，因为该映射方式就是在物理地址上添加一个偏移，使得 `VA = PA + PA2VA_OFFSET`。在 RISC-V Linux Kernel 中这一段区域为 `0xffffffe000000000 ~ 0xffffffff00000000`，共 124 GB 。
 
 
 ### RISC-V Virtual-Memory System (Sv39)
@@ -343,7 +343,7 @@ void setup_vm_final(void) {
     
     // set satp with swapper_pg_dir
 
-    YOUR CODE HERE
+    // YOUR CODE HERE
 
     // flush TLB
     asm volatile("sfence.vma zero, zero");
@@ -372,7 +372,7 @@ create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
 - 由于加入了一些新的 .c 文件，可能需要修改一些Makefile文件，请同学自己尝试修改，使项目可以编译并运行。
 - 输出示例
     ```bash
-    OpenSBI v0.9
+    OpenSBI v1.1
       ____                    _____ ____ _____
      / __ \                  / ____|  _ \_   _|
     | |  | |_ __   ___ _ __ | (___ | |_) || |
@@ -392,35 +392,36 @@ create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     Hello RISC-V
     idle process is running!
     
-    switch to [PID = 28 COUNTER = 1] 
-    [PID = 28] is running! thread space begin at 0xffffffe007fa2000
-    
-    switch to [PID = 12 COUNTER = 1] 
-    [PID = 12] is running! thread space begin at 0xffffffe007fb2000
-    
-    switch to [PID = 14 COUNTER = 2] 
-    [PID = 14] is running! thread space begin at 0xffffffe007fb0000
-    [PID = 14] is running! thread space begin at 0xffffffe007fb0000
-    
-    switch to [PID = 9 COUNTER = 2] 
-    [PID = 9] is running! thread space begin at 0xffffffe007fb5000
-    [PID = 9] is running! thread space begin at 0xffffffe007fb5000
-    
-    switch to [PID = 2 COUNTER = 2] 
-    [PID = 2] is running! thread space begin at 0xffffffe007fbc000
-    [PID = 2] is running! thread space begin at 0xffffffe007fbc000
-    
-    switch to [PID = 1 COUNTER = 2] 
-    [PID = 1] is running! thread space begin at 0xffffffe007fbd000
-    [PID = 1] is running! thread space begin at 0xffffffe007fbd000
-    
-    switch to [PID = 29 COUNTER = 3] 
-    [PID = 29] is running! thread space begin at 0xffffffe007fa1000
-    [PID = 29] is running! thread space begin at 0xffffffe007fa1000
-    [PID = 29] is running! thread space begin at 0xffffffe007fa1000
-    
-    switch to [PID = 11 COUNTER = 3] 
-    [PID = 11] is running! thread space begin at 0xffffffe007fb3000
+    SET [PID = 1 PRIORITY = 1 COUNTER = 1]
+    SET [PID = 2 PRIORITY = 4 COUNTER = 4]
+    SET [PID = 3 PRIORITY = 10 COUNTER = 10]
+    SET [PID = 4 PRIORITY = 4 COUNTER = 4]
+
+    switch to [PID = 3 PRIORITY = 10 COUNTER = 10]
+    [PID = 3] is running. auto_inc_local_var = 1
+    ...
+    [PID = 3] is running. auto_inc_local_var = 10
+
+    switch to [PID = 4 PRIORITY = 4 COUNTER = 4]
+    [PID = 4] is running. auto_inc_local_var = 1
+    ...
+    [PID = 4] is running. auto_inc_local_var = 4
+
+    switch to [PID = 2 PRIORITY = 4 COUNTER = 4]
+    [PID = 2] is running. auto_inc_local_var = 1
+    ...
+    [PID = 2] is running. auto_inc_local_var = 4
+
+    switch to [PID = 1 PRIORITY = 1 COUNTER = 1]
+    [PID = 1] is running. auto_inc_local_var = 1
+
+    SET [PID = 1 PRIORITY = 1 COUNTER = 1]
+    SET [PID = 2 PRIORITY = 4 COUNTER = 4]
+    SET [PID = 3 PRIORITY = 10 COUNTER = 10]
+    SET [PID = 4 PRIORITY = 4 COUNTER = 4]
+
+    switch to [PID = 3 PRIORITY = 10 COUNTER = 10]
+    [PID = 3] is running. auto_inc_local_var = 11
     ...
     
     ```
