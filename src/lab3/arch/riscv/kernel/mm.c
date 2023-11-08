@@ -17,6 +17,7 @@ uint64 kalloc() {
     kmem.freelist = r->next;
     
     memset((void *)r, 0x0, PGSIZE);
+
     return (uint64) r;
 }
 
@@ -43,6 +44,6 @@ void kfreerange(char *start, char *end) {
 }
 
 void mm_init(void) {
-    kfreerange(_ekernel, (char *)PHY_END);
+    kfreerange(_ekernel, (char *)(PHY_END + PA2VA_OFFSET));
     printk("...mm_init done!\n");
 }

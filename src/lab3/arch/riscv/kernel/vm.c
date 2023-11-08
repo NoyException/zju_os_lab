@@ -28,7 +28,7 @@ void setup_vm(void) {
     printk("setup_vm done\n");
 }
 
-/* swapper_pg_dir: kernel pagetable 根目录， 在 setup_vm_final 进行映射。 */
+/* swapper_pg_dir: kernel pagetable 根目录， 在A setup_vm_final 进行映射。 */
 unsigned long swapper_pg_dir[512] __attribute__((__aligned__(0x1000)));
 extern uint64 _stext;
 extern uint64 _srodata;
@@ -37,9 +37,9 @@ extern uint64 _sdata;
 void setup_vm_final(void) {
     memset(swapper_pg_dir, 0x0, PGSIZE);
 
-    printk("&_stext = %llu\n", &_stext);
-    printk("&_srodata = %llu\n", &_srodata);
-    printk("&_sdata = %llu\n", &_sdata);
+    printk("&_stext = %llx\n", &_stext);
+    printk("&_srodata = %llx\n", &_srodata);
+    printk("&_sdata = %llx\n", &_sdata);
     // No OpenSBI mapping required
 
     // mapping kernel text X|-|R|V
@@ -52,18 +52,24 @@ void setup_vm_final(void) {
 
     // mapping other memory -|W|R|V
     create_mapping((uint64 *) swapper_pg_dir, (uint64)&_sdata, (uint64)&_sdata - PA2VA_OFFSET,
-                   PHY_END - (uint64)&_sdata, 0B0111);
+                   PHY_SIZE - ((uint64)&_sdata - (uint64)&_stext), 0B0111);
 
     // set satp with swapper_pg_dir
     // MODE = (8UL << 60), ASID = 0, PPN = ((uint64) swapper_pg_dir >> 12)
-    csr_write(satp, (8UL << 60) | ((uint64) swapper_pg_dir >> 12));
+    csr_write(satp, ((uint64) (swapper_pg_dir)));
+    // csr_write(satp, (8UL << 60) | ((uint64)swapper_pg_dir  >> 12));
+
+    printk("satp: %llx\n", csr_read(satp));
 
     // flush TLB
     asm volatile("sfence.vma zero, zero");
 
     // flush icache
     asm volatile("fence.i");
+    
+    printk("vm setup\n");
 
+    return;
 }
 
 
@@ -105,7 +111,8 @@ int create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) 
         }
 
         //物理页
-        pgtbl0[vpn0] = (1 | (perm << 1) | (pa >> 12 << 10));
+        //pgtbl0[vpn0] = (1 | (perm << 1) | (pa >> 12 << 10));
+        pgtbl0[vpn0] = (perm | (pa >> 12 << 10));
 
         //映射下一页
         sz -= 0x1000;
