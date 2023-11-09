@@ -69,7 +69,7 @@ void dummy() {
             }                           // in case that the new counter is also 1, leading the information not printed.
             last_counter = current->counter;
             auto_inc_local_var = (auto_inc_local_var + 1) % MOD;
-            printk("[PID = %d] is running. auto_inc_local_var = %d\n", current->pid, auto_inc_local_var);
+            printk("[PID = %d] is running. auto_inc_local_var = %d, counter = %d\n", current->pid, auto_inc_local_var, current->counter);
         }
     }
 }
@@ -94,7 +94,8 @@ void do_timer(void) {
     if(current == idle)
         schedule();
     else {
-        current->counter--;
+        if(current->counter>0)
+            current->counter--;
         if(current->counter<=0)
             schedule();
     }

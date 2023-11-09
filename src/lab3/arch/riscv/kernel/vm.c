@@ -1,6 +1,5 @@
 // arch/riscv/kernel/vm.c
 #include "defs.h"
-#include "types.h"
 #include "mm.h"
 #include "string.h"
 #include "printk.h"
@@ -34,12 +33,11 @@ extern uint64 _stext;
 extern uint64 _srodata;
 extern uint64 _sdata;
 
+void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
+
 void setup_vm_final(void) {
     memset(swapper_pg_dir, 0x0, PGSIZE);
 
-    printk("&_stext = %llx\n", &_stext);
-    printk("&_srodata = %llx\n", &_srodata);
-    printk("&_sdata = %llx\n", &_sdata);
     // No OpenSBI mapping required
 
     // mapping kernel text X|-|R|V
@@ -52,14 +50,20 @@ void setup_vm_final(void) {
 
     // mapping other memory -|W|R|V
     create_mapping((uint64 *) swapper_pg_dir, (uint64)&_sdata, (uint64)&_sdata - PA2VA_OFFSET,
-                   PHY_SIZE - ((uint64)&_sdata - (uint64)&_stext), 0B0111);
+                   PHY_END+PA2VA_OFFSET - (uint64)&_sdata, 0B0111);
+
+    printk("satp(old): %llx\n", csr_read(satp));
 
     // set satp with swapper_pg_dir
     // MODE = (8UL << 60), ASID = 0, PPN = ((uint64) swapper_pg_dir >> 12)
-    csr_write(satp, ((uint64) (swapper_pg_dir)));
-    // csr_write(satp, (8UL << 60) | ((uint64)swapper_pg_dir  >> 12));
+//    csr_write(satp, ((uint64) (swapper_pg_dir)));
+//    printk("&swapper_pg_dir = %llx", (uint64)swapper_pg_dir);
+//    printk("&swapper_pg_dir(PA) = %llx", (uint64)swapper_pg_dir-PA2VA_OFFSET);
+    uint64 satp_ = (8UL << 60) | (((uint64)swapper_pg_dir-PA2VA_OFFSET)>>12);
+    printk("satp(target): %llx\n", satp_);
+    csr_write(satp, satp_);
 
-    printk("satp: %llx\n", csr_read(satp));
+    printk("satp(new): %llx\n", csr_read(satp));
 
     // flush TLB
     asm volatile("sfence.vma zero, zero");
@@ -67,15 +71,13 @@ void setup_vm_final(void) {
     // flush icache
     asm volatile("fence.i");
     
-    printk("vm setup\n");
-
-    return;
+    printk("vm setup!\n");
 }
 
 
 /**** 创建多级页表映射关系 *****/
 /* 不要修改该接口的参数和返回值 */
-int create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
+void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     /*
     pgtbl 为根页表的基地址
     va, pa 为需要映射的虚拟地址、物理地址
@@ -95,9 +97,9 @@ int create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) 
         //检查有效
         if (!(pgtbl[vpn2] & 1)) {
             pgtbl1 = (uint64 *) kalloc();
-            pgtbl[vpn2] = (1 | ((uint64) pgtbl1 >> 12 << 10));
+            pgtbl[vpn2] = (1 | (((uint64) pgtbl1 - PA2VA_OFFSET) >> 12 << 10));
         } else{
-            pgtbl1 = (uint64 *) (pgtbl[vpn2] >> 10 << 12);
+            pgtbl1 = (uint64 *) ((pgtbl[vpn2] >> 10 << 12) + PA2VA_OFFSET);
         }
 
         //第三级页表
@@ -105,13 +107,12 @@ int create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) 
         //检查有效
         if (!(pgtbl1[vpn1] & 1)) {
             pgtbl0 = (uint64 *) kalloc();
-            pgtbl1[vpn1] = (1 | ((uint64) pgtbl0 >> 12 << 10));
+            pgtbl1[vpn1] = (1 | (((uint64) pgtbl0 - PA2VA_OFFSET) >> 12 << 10));
         } else{
-            pgtbl0 = (uint64 *) (pgtbl1[vpn1] >> 10 << 12);
+            pgtbl0 = (uint64 *) ((pgtbl1[vpn1] >> 10 << 12) + PA2VA_OFFSET);
         }
 
         //物理页
-        //pgtbl0[vpn0] = (1 | (perm << 1) | (pa >> 12 << 10));
         pgtbl0[vpn0] = (perm | (pa >> 12 << 10));
 
         //映射下一页

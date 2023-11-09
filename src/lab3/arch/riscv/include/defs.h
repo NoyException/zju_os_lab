@@ -17,7 +17,7 @@
 #define VM_END   (0xffffffff00000000)
 #define VM_SIZE  (VM_END - VM_START)
 
-#define PA2VA_OFFSET (VM_START - PHY_START)
+#define PA2VA_OFFSET (uint64)(VM_START - PHY_START)
 
 #define csr_read(csr)                       \
 ({                                          \

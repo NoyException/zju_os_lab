@@ -94,7 +94,8 @@ void do_timer(void) {
     if(current == idle)
         schedule();
     else {
-        current->counter--;
+        if(current->counter>0)
+            current->counter--;
         if(current->counter<=0)
             schedule();
     }
