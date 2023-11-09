@@ -55,11 +55,14 @@ void setup_vm_final(void) {
                    PHY_SIZE - ((uint64)&_sdata - (uint64)&_stext), 0B0111);
 
     // set satp with swapper_pg_dir
+    printk("$SPD: %llx\n", (uint64) (swapper_pg_dir));
+    printk("satp_old: %llx\n", csr_read(satp));
+
     // MODE = (8UL << 60), ASID = 0, PPN = ((uint64) swapper_pg_dir >> 12)
-    csr_write(satp, ((uint64) (swapper_pg_dir)));
+    csr_write(satp, swapper_pg_dir);
     // csr_write(satp, (8UL << 60) | ((uint64)swapper_pg_dir  >> 12));
 
-    printk("satp: %llx\n", csr_read(satp));
+    printk("satp_new: %llx\n", csr_read(satp));
 
     // flush TLB
     asm volatile("sfence.vma zero, zero");
