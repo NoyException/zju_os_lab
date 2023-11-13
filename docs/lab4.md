@@ -72,8 +72,8 @@ for GNU/Linux 3.2.0, not stripped
 
 ## 实验步骤
 ### 准备工程
-* 此次实验基于 lab4 同学所实现的代码进行。
-* 需要修改 `vmlinux.lds.S`，将用户态程序 `uapp` 加载至 `.data` 段。按如下修改：
+* 此次实验基于 lab3 同学所实现的代码进行。
+* 需要修改 `vmlinux.lds`，将用户态程序 `uapp` 加载至 `.data` 段。按如下修改：
 ```asm
 ...
 
@@ -86,16 +86,16 @@ for GNU/Linux 3.2.0, not stripped
         _edata = .;
         
         . = ALIGN(0x1000);
-        uapp_start = .;
+        _sramdisk = .;
         *(.uapp .uapp*)
-        uapp_end = .;
+        _eramdisk = .;
         . = ALIGN(0x1000);
 
     } >ramv AT>ram
 
 ...
 ```
-> 如果你要使用 `uapp_start` 这个符号，可以在代码里这样来声明它：`extern char uapp_start[]`，这样就可以像一个字符数组一样来访问这块内存的内容。例如，程序的第一个字节就是 `uapp_start[0]`。
+> 如果你要使用 `_sramdisk` 这个符号，可以在代码里这样来声明它：`extern char _sramdisk[]`，这样就可以像一个字符数组一样来访问这块内存的内容。例如，程序的第一个字节就是 `_sramdisk[0]`。
 
 * 需要修改 `defs.h`，在 `defs.h` **添加** 如下内容：
 ```c
@@ -187,13 +187,19 @@ struct task_struct {
     pagetable_t pgd;
 };
 ```
-> **Warning：** 经测试实现中并不需要 `thread_info` 这个成员，可以考虑不使用这个成员，或者将其删除，并更改 `switch_to` 中各个变量的偏移量，让我们的 OS 保持原来的行为。
+> **Warning：** 经测试，实现中并不需要 `thread_info` 这个成员，可以考虑不使用这个成员，或者将其删除，并更改 `switch_to` 中各个变量的偏移量，让我们的 OS 保持原来的行为。
 * 修改 task_init
-    * 对每个用户态进程，其拥有两个 stack： `U-Mode Stack` 以及 `S-Mode Stack`， 其中 `S-Mode Stack` 在 `lab3` 中我们已经设置好了。我们可以通过 `alloc_page` 接口申请一个空的页面来作为 `U-Mode Stack`。
-    * 为每个用户态进程创建自己的页表 并将 `uapp` 所在页面，以及 `U-Mode Stack` 做相应的映射，同时为了避免 `U-Mode` 和 `S-Mode` 切换的时候切换页表，我们也将内核页表 （ `swapper_pg_dir` ） 复制到每个进程的页表中。注意程序运行过程中，有部分数据不在栈上，而在初始化的过程中就已经被分配了空间（比如我们的 `uapp` 中的 `counter` 变量），所以二进制文件需要先被 **拷贝** 到一块某个进程专用的内存之后再进行映射，防止所有的进程共享数据，造成期望外的进程间相互影响。
-    * 对每个用户态进程我们需要将 `sepc` 修改为 `USER_START`，配置修改好 `sstatus` 中的 `SPP` （ 使得 sret 返回至 U-Mode ）， `SPIE` （ sret 之后开启中断 ）， `SUM` （ S-Mode 可以访问 User 页面 ）， `sscratch` 设置为 `U-Mode` 的 sp，其值为 `USER_END` （即  `U-Mode Stack` 被放置在 `user space` 的最后一个页面）。
-    * 修改 __switch_to， 需要加入 保存/恢复 `sepc` `sstatus` `sscratch` 以及 切换页表的逻辑。
-    * 在切换了页表之后，需要通过 `fence.i` 和 `vma.fence` 来刷新 TLB 和 ICache。
+    * 对于每个进程，初始化我们刚刚在 `thread_struct` 中添加的三个变量。具体而言：
+        * 将 `sepc` 设置为 `USER_START`。
+        * 配置 `sstatus` 中的 `SPP`（使得 sret 返回至 U-Mode）， `SPIE` （sret 之后开启中断）， `SUM`（S-Mode 可以访问 User 页面）。
+        * 将 `sscratch` 设置为 `U-Mode` 的 sp，其值为 `USER_END` （即，用户态栈被放置在 `user space` 的最后一个页面）。
+    * 对于每个进程，创建属于它自己的页表。
+    * 为了避免 `U-Mode` 和 `S-Mode` 切换的时候切换页表，我们将内核页表 （ `swapper_pg_dir` ） 复制到每个进程的页表中。
+    * 将 `uapp` 所在的页面映射到每个进行的页表中。注意，在程序运行过程中，有部分数据不在栈上，而在初始化的过程中就已经被分配了空间（比如我们的 `uapp` 中的 `counter` 变量）。所以，二进制文件需要先被 **拷贝** 到一块某个进程专用的内存之后再进行映射，防止所有的进程共享数据，造成预期外的进程间相互影响。
+    * 设置用户态栈。对每个用户态进程，其拥有两个栈： 用户态栈和内核态栈；其中，内核态栈在 `lab3` 中我们已经设置好了。我们可以通过 `alloc_page` 接口申请一个空的页面来作为用户态栈，并映射到进程的页表中。
+
+* 修改 __switch_to， 需要加入 保存/恢复 `sepc` `sstatus` `sscratch` 以及 切换页表的逻辑。
+* 在切换了页表之后，需要通过 `fence.i` 和 `vma.fence` 来刷新 TLB 和 ICache。
 
 ```
                 PHY_START                                                                PHY_END
@@ -201,7 +207,7 @@ struct task_struct {
                    │         │                                │                                                 │
                    ▼         ▼                                ▼                                                 ▼
        ┌───────────┬─────────┬────────────────────────────────┬─────────────────────────────────────────────────┐
- PA    │           │         │ uapp (copied from uapp_start)  │                                                 │
+ PA    │           │         │ uapp (copied from _sramdisk)  │                                                 │
        └───────────┴─────────┴────────────────────────────────┴─────────────────────────────────────────────────┘
                              ▲                                ▲
        ┌─────────────────────┘                                │
@@ -452,12 +458,12 @@ File Attributes
 .incbin "uapp"
 
 ```
-这时候从 `uapp_start` 开始的数据就变成了名为 `uapp` 的 ELF 文件，也就是说 `uapp_start` 处 32-bit 的数据不再是我们需要执行第一条指令了，而是 ELF Header 的开始。
+这时候从 `_sramdisk` 开始的数据就变成了名为 `uapp` 的 ELF 文件，也就是说 `_sramdisk` 处 32-bit 的数据不再是我们需要执行第一条指令了，而是 ELF Header 的开始。
 
 这时候就需要你对 `task_init` 中的初始化步骤进行修改。我们给出了 ELF 相关的结构体定义（`elf.h`），大家可以直接使用。你可能会使用到的结构体或者域如下：
 
 ```
-Elf64_Ehdr   // 你可以将 uapp_start 强制转化为改类型的指针，
+Elf64_Ehdr   // 你可以将 _sramdisk 强制转化为该类型的指针，
                 然后把那一块内存当成此类结构体来读其中的数据，其中包括：
     e_ident  // Magic Number, 你可以通过这个域来检测自己是不是真的正在读一个 Ehdr,
                 值一定是 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
@@ -466,8 +472,8 @@ Elf64_Ehdr   // 你可以将 uapp_start 强制转化为改类型的指针，
     e_phoff  // ELF 文件包含的 Segment 数组相对于 Ehdr 的偏移量
 
 Elf64_Phdr   // 存储了程序各个 Segment 相关的 metadata
-             // 你可以将 uapp_start + e_phoff 强制转化为此类型，就会指向第一个 Phdr,
-             // uapp_start + e_phoff + 1 * sizeof(Elf64_Phdr), 则指向第二个‘
+             // 你可以将 _sramdisk + e_phoff 强制转化为此类型，就会指向第一个 Phdr,
+             // _sramdisk + e_phoff + 1 * sizeof(Elf64_Phdr), 则指向第二个
     p_filesz // Segment 在文件中占的大小
     p_memsz  // Segment 在内存中占的大小
     p_vaddr  // Segment 起始的用户态虚拟地址
@@ -476,25 +482,25 @@ Elf64_Phdr   // 存储了程序各个 Segment 相关的 metadata
     p_flags  // Segment 的权限（包括了读、写和执行）
 
 ```
-我们可以按照这些信息，在从 `uapp_start` - `uapp_end` 这个 ELF 文件中的内容 **拷贝** 到我们开辟的内存中。
+我们可以按照这些信息，在从 `_sramdisk` - `_eramdisk` 这个 ELF 文件中的内容 **拷贝** 到我们开辟的内存中。
 
 其中相对文件偏移 `p_offset` 指出相应 segment 的内容从 ELF 文件的第 `p_offset` 字节开始, 在文件中的大小为 `p_filesz`, 它需要被分配到以 `p_vaddr` 为首地址的虚拟内存位置, 在内存中它占用大小为 `p_memsz`. 也就是说, 这个 segment 使用的内存就是 `[p_vaddr, p_vaddr + p_memsz)` 这一连续区间, 然后将 segment 的内容从ELF文件中读入到这一内存区间, 并将 `[p_vaddr + p_filesz, p_vaddr + p_memsz)` 对应的物理区间清零. （本段内容引用自[南京大学PA](https://nju-projectn.github.io/ics-pa-gitbook/ics2022/3.3.html))
 
 你也可以参考这篇 [blog](https://www.gabriel.urdhr.fr/2015/01/22/elf-linking/) 中关于 **静态** 链接程序的载入过程来进行你的载入。
 
-这里有不少例子可以举，为了避免同学们在实验中花太多时间，我们告诉大家可以怎么找到实验中这些相关变量被存在了哪里：(注意以下的 `uapp_start` 类型使用的是 `char*`，如果你在使用其他类型，需要根据你使用的类型去调整针对指针的算数运算。）
+这里有不少例子可以举，为了避免同学们在实验中花太多时间，我们告诉大家可以怎么找到实验中这些相关变量被存在了哪里：(注意以下的 `_sramdisk` 类型使用的是 `char*`，如果你在使用其他类型，需要根据你使用的类型去调整针对指针的算数运算。）
 
-* `Elf64_Ehdr* ehdr = (Elf64_Ehdr*)uapp_start`，从地址 uapp_start 开始，便是我们要找的 Ehdr.
-* `Elf64_Phdr* phdrs = (Elf64_Phdr*)(uapp_start + ehdr->phoff)`，是一个 Phdr 数组，其中的每个元素都是一个 `Elf64_Phdr`.
+* `Elf64_Ehdr* ehdr = (Elf64_Ehdr*)_sramdisk`，从地址 _sramdisk 开始，便是我们要找的 Ehdr.
+* `Elf64_Phdr* phdrs = (Elf64_Phdr*)(_sramdisk + ehdr->phoff)`，是一个 Phdr 数组，其中的每个元素都是一个 `Elf64_Phdr`.
 * `phdrs[ehdr->phnum - 1]` 是最后一个 Phdr.
 * `phdrs[0].p_type == PT_LOAD`，说明这个 Segment 的类型是 LOAD，需要在初始化时被加载进内存。
-* `(void*)(uapp_start + phdrs[1].p_offset)` 将会指向第二个段中的内容的开头.
+* `(void*)(_sramdisk + phdrs[1].p_offset)` 将会指向第二个段中的内容的开头.
 
 剩下的域的用法我们希望同学们通过阅读 `man elf` 命令和使用 [Google](google.com)（注意不是百度）来获取。大家可以参考以下的代码来将程序 load 进入内存。
 
 ```c
 static uint64_t load_program(struct task_struct* task) {
-    Elf64_Ehdr* ehdr = (Elf64_Ehdr*)uapp_start;
+    Elf64_Ehdr* ehdr = (Elf64_Ehdr*)_sramdisk;
 
     uint64_t phdr_start = (uint64_t)ehdr + ehdr->e_phoff;
     int phdr_cnt = ehdr->e_phnum;
