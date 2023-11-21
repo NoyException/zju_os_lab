@@ -19,7 +19,7 @@ void setup_vm(void) {
 
     // 0x80000000>>12获得页表地址，再<<10给权限位留空间
     uint64 entry = 0x80000000UL>>12<<10 | 0B1111UL;
-    // 0x80000000 = ...|9‘b2|30'b0
+    // 0x80000000 = ...|9'b2|30'b0
     early_pgtbl[2] = entry;
     // 0xffffffe000000000 = ...|9'b110000000|30'b0
     early_pgtbl[384] = entry;
@@ -36,6 +36,7 @@ extern uint64 _sdata;
 void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
 
 void setup_vm_final(void) {
+
     memset(swapper_pg_dir, 0x0, PGSIZE);
 
     // No OpenSBI mapping required
@@ -70,8 +71,17 @@ void setup_vm_final(void) {
 
     // flush icache
     asm volatile("fence.i");
-    
+
     printk("vm setup!\n");
+
+//    printk("_sdata = %llx\n", _sdata);
+//    _sdata = 0x123;
+//    printk("_sdata(modified) = %llx\n", _sdata);
+//    printk("_stext = %llx\n", _stext);
+//    _stext = 0x123;
+//    printk("_stext(modified) = %llx\n", _stext);
+//    printk("_srodata = %llx\n", _srodata);
+//    printk("done?");
 }
 
 
