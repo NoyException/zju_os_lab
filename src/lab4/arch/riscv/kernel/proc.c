@@ -1,12 +1,12 @@
 //arch/riscv/kernel/proc.c
+#include <string.h>
 #include "proc.h"
 #include "mm.h"
 #include "defs.h"
 #include "rand.h"
 #include "printk.h"
 #include "test.h"
-#include "string.h"
-#include "vm.h"
+#include "vm.c"
 
 //arch/riscv/kernel/proc.c
 
