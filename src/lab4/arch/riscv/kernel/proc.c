@@ -1,12 +1,11 @@
 //arch/riscv/kernel/proc.c
-#include <string.h>
 #include "proc.h"
 #include "mm.h"
 #include "defs.h"
 #include "rand.h"
 #include "printk.h"
 #include "test.h"
-#include "vm.c"
+#include <string.h>
 
 //arch/riscv/kernel/proc.c
 
@@ -83,11 +82,11 @@ void task_init() {
         task[i]->thread.sstatus = SPP(SPP_USER) | SPIE(1) | SUM(1);
         task[i]->thread.sscratch = USER_END;
 
-        task[i]->pgd = alloc_page();
+        task[i]->pgd = (pagetable_t)alloc_page();
 
-        memncpy(task[i]->pgd, &swapper_pg_dir, PGSIZE);
+        memcpy(task[i]->pgd, &swapper_pg_dir, PGSIZE);
 
-
+        /** TODO: */
     }
 
     printk("...proc_init done!\n");
