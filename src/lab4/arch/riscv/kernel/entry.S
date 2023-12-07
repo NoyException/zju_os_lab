@@ -40,6 +40,11 @@ _traps:
     sd x31, 240(sp)
     csrr t0, sepc
     sd t0, 248(sp)
+    # lab4 addition: stores of sstatus sscratch
+    csrr t0, sstatus
+    sd t0, 256(sp)
+    csrr t0, sscratch
+    sd t0, 264(sp)
 
     # -----------
 
@@ -51,6 +56,13 @@ _traps:
     # -----------
 
     # 3. restore sepc and 32 registers (x2(sp) should be restore last) from stack
+
+    # lab4 addition: loads of sepc sstatus sscratch
+    ld t0, 264(sp)
+    csrw sscratch, t0
+    ld t0, 256(sp)
+    csrw sstatus, t0
+
     ld t0, 248(sp)
     csrw sepc, t0
     ld x1, 0(sp)
@@ -89,6 +101,25 @@ _traps:
     # -----------
 
     # 4. return from trap
+
+    # lab4 addition: when S-mode -> U-mode, change sp
+
+    addi sp, sp, -8
+    sw t0, 0(sp)    # save t0 for future recover
+
+    csrr t0, sstatus             # t0 changed here
+    andi t0, t0, 0x100
+    bne t0, x0, SRET_FROM_TRAP   # SPP != USER-MODE
+    ld t0, 0(sp)
+    csrrw sp, sscratch, sp       # swapping values(this operation meets the requirements)
+    # csrr t0, sscratch
+    # csrw sscratch, sp
+    # addi sp, t0, 0
+    
+    sret
+
+SRET_FROM_TRAP:
+    ld t0, 0(sp)
     sret
 
     # -----------
@@ -99,6 +130,11 @@ _traps:
 __dummy:
     la t0, dummy
     csrw sepc, t0
+
+    # lab4: S-mode -> U-mode, change sp
+    csrr t0, sscratch   # get u-mode sp
+    csrw sscratch, sp   # save s-mode sp
+    addi sp, t0, 0      # change sp
     sret
 
 

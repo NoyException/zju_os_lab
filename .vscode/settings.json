@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "proc.h": "c"
+        "proc.h": "c",
+        "syscall.h": "c"
     }
 }

@@ -77,3 +77,10 @@ void switch_to(struct task_struct* next);
 
 /* dummy funciton: 一个循环程序, 循环输出自己的 pid 以及一个自增的局部变量 */
 void dummy();
+
+struct pt_regs{
+    uint64 gpr[31];
+    uint64 sepc;
+    uint64 sstatus;
+    uint64 sscratch;
+};
