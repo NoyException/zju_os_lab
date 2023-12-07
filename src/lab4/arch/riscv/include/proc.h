@@ -45,7 +45,8 @@ struct thread_struct {
 // };
 
 struct task_struct {
-    struct thread_info* thread_info;
+    // struct thread_info* thread_info;
+    struct thread_info thread_info;
     uint64_t state;
     uint64_t counter;
     uint64_t priority;
@@ -58,6 +59,12 @@ struct task_struct {
 
 /* 线程初始化 创建 NR_TASKS 个线程 */
 void task_init();
+
+/* 将 uapp 所在的页面映射到每个进行的页表中 */
+void uapp_map(struct task_struct* task);
+
+/* 设置用户态栈 */
+void user_stack_set(struct task_struct* task);
 
 /* 在时钟中断处理中被调用 用于判断是否需要进行调度 */
 void do_timer();

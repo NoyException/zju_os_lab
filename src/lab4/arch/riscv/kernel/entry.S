@@ -122,6 +122,13 @@ __switch_to:
     sd s9, 88(t0)
     sd s10, 96(t0)
     sd s11, 104(t0)
+    # lab4 addition: stores of sepc sstatus sscratch
+    csrr t0, sepc
+    sd t0, 112(t0)
+    csrr t0, sstatus
+    sd t0, 120(t0)
+    csrr t0, sscratch
+    sd t0, 128(t0)
 
     # restore state from next process
     add t0, a1, 48  # t0 -> &nextTask.thread_struct
@@ -139,5 +146,31 @@ __switch_to:
     ld s9, 88(t0)
     ld s10, 96(t0)
     ld s11, 104(t0)
+    # lab4 addition: loads of sepc sstatus sscratch
+    ld t1, 112(t0)
+    csrw sepc, t1
+    ld t1, 120(t0)
+    csrw sstatus, t1
+    ld t1, 128(t0)
+    csrw sscratch, t1
+
+    # lab4: swap page table
+    la t1, PA2VA_OFFSET
+
+    ld t2, 136(t0)  # t2 == nextTask.pgd
+    sub t2, t2, t1
+    srli t2, t2, 12 # t2 == nextTask's page table PPN
+    
+    li t3, 8
+    slli t3, t3, 60 # t3 == satp Page-based 39 bit virtual addressing mode
+    or t2, t2, t3   # t2 == satp value
+
+    csrw satp, t2
+
+    # flush tlb
+    sfence.vma zero, zero
+
+    # flush icache
+    fence.i
 
     ret

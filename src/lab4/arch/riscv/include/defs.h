@@ -34,6 +34,13 @@
 #define SPIE(value) value << 5
 #define SUM(value) value << 18
 
+/** Page Table Entry DEFS */
+#define PTE_VALID   1
+#define PTE_READ    1 << 1
+#define PTE_WRITE   1 << 2
+#define PTE_EXECUTE 1 << 3
+#define PTE_USER    1 << 4
+
 /** CSR DEFS */
 #define csr_read(csr)                       \
 ({                                          \
