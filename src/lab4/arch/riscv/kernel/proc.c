@@ -5,12 +5,13 @@
 #include "rand.h"
 #include "printk.h"
 #include "test.h"
-#include <string.h>
+#include "string.h"
+#include "vm.h"
 
 //arch/riscv/kernel/proc.c
 
 extern void __dummy();
-unsigned long swapper_pg_dir[512] __attribute__((__aligned__(0x1000)));
+extern unsigned long swapper_pg_dir[512] __attribute__((__aligned__(0x1000)));
 
 struct task_struct* idle;           // idle process
 struct task_struct* current;        // 指向当前运行线程的 `task_struct`
@@ -38,37 +39,14 @@ void task_init() {
     current = idle;
     task[0] = idle;
 
-    /** LAB2 */
-    // 1. 参考 idle 的设置, 为 task[1] ~ task[NR_TASKS - 1] 进行初始化
-    // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，为了单元测试的需要，counter 和 priority 进行如下赋值：
-    //      task[i].counter  = task_test_counter[i];
-    //      task[i].priority = task_test_priority[i];
-    // 3. 为 task[1] ~ task[NR_TASKS - 1] 设置 `thread_struct` 中的 `ra` 和 `sp`,
-    // 4. 其中 `ra` 设置为 __dummy （见 4.3.2）的地址,  `sp` 设置为 该线程申请的物理页的高地址
-
-    /** LAB4：在defs.h中添加了一些相关宏定义 */
-    // 1. 对于每个进程，初始化刚刚在 thread_struct 中添加的三个变量：
-    //    1.1. 将 sepc 设置为 USER_START
-    //    1.2. 配置 sstatus 中的 SPP（使得 sret 返回至 U-Mode）,
-    //         SPIE （sret 之后开启中断）, SUM（S-Mode 可以访问 User 页面）
-    //    1.3. 将 sscratch 设置为 U-Mode 的 sp，其值为 USER_END 
-    //        （即，用户态栈被放置在 user space 的最后一个页面）
-    // 2. 对于每个进程，创建属于它自己的页表
-    // 3. 为了避免 U-Mode 和 S-Mode 切换的时候切换页表,
-    //    将内核页表 （ swapper_pg_dir ） 复制到每个进程的页表中
-    /** TODO: */
-    // 4. 将 uapp 所在的页面映射到每个进行的页表中。
-    //    注意，在程序运行过程中，有部分数据不在栈上，而在初始化的过程中就已经被分配了空间
-    //    （比如我们的 uapp 中的 counter 变量）。所以，二进制文件需要先被拷贝到一块某个进程专用的内存之后
-    //    再进行映射，防止所有的进程共享数据，造成预期外的进程间相互影响
-    // 5. 设置用户态栈。对每个用户态进程，其拥有两个栈：
-    //    用户态栈和内核态栈
-    //    其中，内核态栈在 lab3 中我们已经设置好了, 可以通过 alloc_page 接口申请一个空的页面来作为用户态栈，
-    //    并映射到进程的页表中
-
-
     for (int i = 1; i < NR_TASKS; ++i) {
         /** LAB2 */
+        // 1. 参考 idle 的设置, 为 task[1] ~ task[NR_TASKS - 1] 进行初始化
+        // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，为了单元测试的需要，counter 和 priority 进行如下赋值：
+        //      task[i].counter  = task_test_counter[i];
+        //      task[i].priority = task_test_priority[i];
+        // 3. 为 task[1] ~ task[NR_TASKS - 1] 设置 `thread_struct` 中的 `ra` 和 `sp`,
+        // 4. 其中 `ra` 设置为 __dummy （见 4.3.2）的地址,  `sp` 设置为 该线程申请的物理页的高地址
         task[i] = (struct task_struct*)kalloc();
         task[i]->state = TASK_RUNNING;
         task[i]->counter = task_test_counter[i];
@@ -77,7 +55,25 @@ void task_init() {
         task[i]->thread.ra = (uint64)__dummy;
         task[i]->thread.sp = (uint64)task[i] + PGSIZE;
 
-        /** LAB4 */
+        /** LAB4：在defs.h中添加了一些相关宏定义 */
+        // 1. 对于每个进程，初始化刚刚在 thread_struct 中添加的三个变量：
+        //    1.1. 将 sepc 设置为 USER_START
+        //    1.2. 配置 sstatus 中的 SPP（使得 sret 返回至 U-Mode）,
+        //         SPIE （sret 之后开启中断）, SUM（S-Mode 可以访问 User 页面）
+        //    1.3. 将 sscratch 设置为 U-Mode 的 sp，其值为 USER_END
+        //        （即，用户态栈被放置在 user space 的最后一个页面）
+        // 2. 对于每个进程，创建属于它自己的页表
+        // 3. 为了避免 U-Mode 和 S-Mode 切换的时候切换页表,
+        //    将内核页表 （ swapper_pg_dir ） 复制到每个进程的页表中
+        /** TODO: */
+        // 4. 将 uapp 所在的页面映射到每个进行的页表中。
+        //    注意，在程序运行过程中，有部分数据不在栈上，而在初始化的过程中就已经被分配了空间
+        //    （比如我们的 uapp 中的 counter 变量）。所以，二进制文件需要先被拷贝到一块某个进程专用的内存之后
+        //    再进行映射，防止所有的进程共享数据，造成预期外的进程间相互影响
+        // 5. 设置用户态栈。对每个用户态进程，其拥有两个栈：
+        //    用户态栈和内核态栈
+        //    其中，内核态栈在 lab3 中我们已经设置好了, 可以通过 alloc_page 接口申请一个空的页面来作为用户态栈，
+        //    并映射到进程的页表中
         task[i]->thread.sepc = USER_START;
         task[i]->thread.sstatus = SPP(SPP_USER) | SPIE(1) | SUM(1);
         task[i]->thread.sscratch = USER_END;
@@ -87,6 +83,8 @@ void task_init() {
         memcpy(task[i]->pgd, &swapper_pg_dir, PGSIZE);
 
         /** TODO: */
+        // 4. 将 uapp 所在的页面映射到每个进行的页表中。
+//        create_mapping(task[i]->pgd, USER_START, , USER_END - USER_START, 0B1111);
     }
 
     printk("...proc_init done!\n");

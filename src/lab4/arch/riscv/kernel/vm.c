@@ -1,5 +1,5 @@
 // arch/riscv/kernel/vm.c
-#include "defs.h"
+#include "vm.h"
 #include "mm.h"
 #include "string.h"
 #include "printk.h"
@@ -32,8 +32,6 @@ unsigned long swapper_pg_dir[512] __attribute__((__aligned__(0x1000)));
 extern uint64 _stext;
 extern uint64 _srodata;
 extern uint64 _sdata;
-
-void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
 
 void setup_vm_final(void) {
 
