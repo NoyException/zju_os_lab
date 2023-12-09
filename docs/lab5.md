@@ -178,7 +178,6 @@ RISC-V 异常处理：当系统运行发生异常时，可即时地通过解析 
     └── uapp.S
 ```
 * 在 `user/getpid.c` 中我们设置了四个 `main` 函数。在实现了 `Page Fault` 之后第一个 `main` 函数可以成功运行，在 lab6 实现了 `fork` 之后其余三个 `main` 函数可以成功运行。这些用户程序的行为需要同学们自行理解（估计期末考也一定会考到）。
-* 修改 `task_init` 函数中修改为仅初始化一个 task ，之后其余的 task 均通过 `fork` 创建。
 
 ###  实现 VMA
 修改 `proc.h`，增加如下相关结构：(因为链表太麻烦了，这次让大家用数组存储 VMA)
@@ -438,8 +437,7 @@ Time remaining: 10, switching to PID: 2
 
 1. `uint64_t vm_content_size_in_file;` 对应的文件内容的长度。为什么还需要这个域?
 2. `struct vm_area_struct vmas[0];` 为什么可以开大小为 0 的数组? 这个定义可以和前面的 vma_cnt 换个位置吗?
-3. 想想为什么只要拷贝那些已经分配并映射的页，那些本来应该被分配并映射，但是暂时还没有因为 Page Fault 而被分配并映射的页怎么办?
 
 
 ## 作业提交
-同学需要提交实验报告以及整个工程代码。在提交前请使用 `make clean` 清除所有构建产物。请在处理 Page Fault 前，输出一段信息表明发生了 Page Fault，并且输出 `sepc, scause, stval`。并且对于每一个我们给出的 `main` 函数，请截图到每个进程至少被调度到两次为止。并标明在各个 `main` 作为 `uapp` 的情况下，一共会发生多少次 Page Fault。
+同学需要提交实验报告以及整个工程代码。在提交前请使用 `make clean` 清除所有构建产物。请在处理 Page Fault 前，输出一段信息表明发生了 Page Fault，并且输出 `sepc, scause, stval`。并且对于我们给出的 `main` 函数，请截图到每个进程至少被调度到两次为止。并标明在 `main` 作为 `uapp` 的情况下，一共会发生多少次 Page Fault。
