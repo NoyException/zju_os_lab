@@ -69,7 +69,7 @@ void schedule_test(){
             output_length = 21;
             break;
         default :
-            printk("unknown test case\n");
+            printk("unknown testfile case\n");
             break;
     }
     
@@ -96,11 +96,11 @@ void schedule_test(){
                 #else
                     for(int i = 0; i < output_length; i++){
                         if(priority_output[i] != task_test_output[i]){
-                            printk("\nNR_TASKS = %d, PRIORITY test failed!\n\n", NR_TASKS);
+                            printk("\nNR_TASKS = %d, PRIORITY testfile failed!\n\n", NR_TASKS);
                             goto stuck;
                         }
                     }
-                    printk("\nNR_TASKS = %d, PRIORITY test passed!\n\n", NR_TASKS);
+                    printk("\nNR_TASKS = %d, PRIORITY testfile passed!\n\n", NR_TASKS);
                     goto stuck;
                 #endif
             }

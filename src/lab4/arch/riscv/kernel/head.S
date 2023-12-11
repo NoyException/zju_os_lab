@@ -45,9 +45,9 @@ _start:
     # ----------------------
 
     # set sstatus[SIE] = 1
-    csrr t0, sstatus
-    ori t0, t0, 0x2
-    csrw sstatus, t0
+    # csrr t0, sstatus
+    # ori t0, t0, 0x2
+    # csrw sstatus, t0
 
     # ----------------------
     # Call the kernel

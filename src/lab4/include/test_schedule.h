@@ -3,7 +3,7 @@
 #include "types.h"
 
 /**
- * new content for unit test
+ * new content for unit testfile
 */
 #define COUNTER_SEED 29
 #define PRIORITY_SEED 17

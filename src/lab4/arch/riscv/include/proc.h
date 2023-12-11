@@ -61,10 +61,10 @@ struct task_struct {
 void task_init();
 
 /* 将 uapp 所在的页面映射到每个进行的页表中 */
-void uapp_map(struct task_struct* task);
+void map_uapp(struct task_struct* t);
 
 /* 设置用户态栈 */
-void user_stack_set(struct task_struct* task);
+void set_ustack(struct task_struct* t);
 
 /* 在时钟中断处理中被调用 用于判断是否需要进行调度 */
 void do_timer();

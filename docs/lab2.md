@@ -228,7 +228,7 @@ void dummy();
     struct task_struct* task[NR_TASKS]; // 线程数组，所有的线程都保存在此
 
     /**
-     * new content for unit test of 2023 OS lab2
+     * new content for unit testfile of 2023 OS lab2
     */
     extern uint64 task_test_priority[]; // test_init 后，用于初始化 task[i].priority 的数组
     extern uint64 task_test_counter[];  // test_init 后，用于初始化 task[i].counter  的数组

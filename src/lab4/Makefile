@@ -15,25 +15,25 @@ CFLAG = ${CF} ${INCLUDE} -DPRIORITY
 
 all: clean
 	${MAKE} -C lib all
-	${MAKE} -C test all
+	${MAKE} -C testfile all
 	${MAKE} -C init all
-	${MAKE} -C arch/riscv all
 	${MAKE} -C user all
+	${MAKE} -C arch/riscv all
 	@echo -e '\n'Build Finished OK
 
 TEST:
 	${MAKE} -C lib all
-	${MAKE} -C test test
+	${MAKE} -C testfile test
 	${MAKE} -C init all
-	${MAKE} -C arch/riscv test
 	${MAKE} -C user all
+	${MAKE} -C arch/riscv test
 	@echo -e '\n'Build Finished OK
 
 run: all
 	@echo Launch the qemu ......
 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default 
 
-test-run: TEST
+test-run: testfile
 	@echo Launch the qemu ......
 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default 
 
@@ -41,16 +41,16 @@ debug: all
 	@echo Launch the qemu for debug ......
 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default -S -s
 
-test-debug: TEST
+test-debug: testfile
 	@echo Launch the qemu for debug ......
 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default -S -s
 
 clean:
 	${MAKE} -C lib clean
-	${MAKE} -C test clean
+	${MAKE} -C testfile clean
 	${MAKE} -C init clean
-	${MAKE} -C arch/riscv clean
 	${MAKE} -C user clean
+	${MAKE} -C arch/riscv clean
 	$(shell test -f vmlinux && rm vmlinux)
 	$(shell test -f System.map && rm System.map)
 	@echo -e '\n'Clean Finished

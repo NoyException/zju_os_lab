@@ -6,7 +6,7 @@ _traps:
     # -----------
 
     # 1. save 32 registers and sepc to stack
-    addi sp, sp, -256
+    addi sp, sp, -272
     sd x1, 0(sp)
     sd x2, 8(sp)
     sd x3, 16(sp)
@@ -96,7 +96,7 @@ _traps:
     ld x30, 232(sp)
     ld x31, 240(sp)
     ld x2, 8(sp)
-    addi sp, sp, 256
+    addi sp, sp, 272
 
     # -----------
 
@@ -143,7 +143,8 @@ __switch_to:
     # save state to prev process
     # YOUR CODE HERE
 
-    add t0, a0, 48  # t0 -> &currentTask.thread_struct
+    # t0 -> &currentTask.thread_struct
+    add t0, a0, 48
     sd ra, 0(t0)
     sd sp, 8(t0)
     sd s0, 16(t0)
@@ -167,7 +168,8 @@ __switch_to:
     sd t0, 128(t0)
 
     # restore state from next process
-    add t0, a1, 48  # t0 -> &nextTask.thread_struct
+    # t0 -> &nextTask.thread_struct
+    add t0, a1, 48
     ld ra, 0(t0)
     ld sp, 8(t0)
     ld s0, 16(t0)
