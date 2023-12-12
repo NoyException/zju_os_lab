@@ -1,6 +1,5 @@
 #include "printk.h"
-#include "sbi.h"
-#include "defs.h"
+#include "../../lab4/arch/riscv/include/proc.h"
 
 extern void test();
 
@@ -12,7 +11,8 @@ int start_kernel() {
 //    csr_write(sstatus, 0x0000000000000000);
 //    printk("updated sstatus=%llx\n", csr_read(sstatus));
 
+    schedule();
     test(); // DO NOT DELETE !!!
 
-	return 0;
+    return 0;
 }
