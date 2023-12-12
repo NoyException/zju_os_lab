@@ -85,7 +85,7 @@ void setup_vm_final(void) {
 
 /**** 创建多级页表映射关系 *****/
 /* 不要修改该接口的参数和返回值 */
-void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
+int create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     /*
     pgtbl 为根页表的基地址
     va, pa 为需要映射的虚拟地址、物理地址

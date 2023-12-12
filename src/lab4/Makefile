@@ -21,15 +21,15 @@ all: clean
 	${MAKE} -C arch/riscv all
 	@echo -e '\n'Build Finished OK
 
-TEST:
+test-file:
 	${MAKE} -C lib all
 	${MAKE} -C testfile test
 	${MAKE} -C init all
 	${MAKE} -C user all
-	${MAKE} -C arch/riscv test
+	${MAKE} -C arch/riscv all
 	@echo -e '\n'Build Finished OK
 
-run: all
+run: test-file
 	@echo Launch the qemu ......
 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default 
 
@@ -37,7 +37,7 @@ test-run: testfile
 	@echo Launch the qemu ......
 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default 
 
-debug: all
+debug: test-file
 	@echo Launch the qemu for debug ......
 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default -S -s
 

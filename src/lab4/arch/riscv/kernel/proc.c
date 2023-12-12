@@ -70,7 +70,9 @@ void task_init() {
         /** LAB4：在defs.h中添加了一些相关宏定义 */
         // 1. 对于每个进程，初始化刚刚在 thread_struct 中添加的三个变量：
         //    1.1. 将 sepc 设置为 USER_START
-        task[i]->thread.sepc = USER_START;
+        //    （在elf里，sepc改为ehdr->e_entry）
+        // task[i]->thread.sepc = USER_START;
+        task[i]->thread.sepc = ((Elf64_Ehdr *) uapp_start)->e_entry;
         //    1.2. 配置 sstatus 中的 SPP（使得 sret 返回至 U-Mode）,
         //         SPIE （sret 之后开启中断）, SUM（S-Mode 可以访问 User 页面）
         task[i]->thread.sstatus = SPP(SPP_USER) | SPIE(1) | SUM(1);
@@ -78,24 +80,47 @@ void task_init() {
         //        （即，用户态栈被放置在 user space 的最后一个页面）
         task[i]->thread.sscratch = USER_END;
 
-        // 2. 对于每个进程，创建属于它自己的页表
+        // 1. 对于每个进程，创建属于它自己的页表
         task[i]->pgd = (pagetable_t) alloc_page();
 
-        // 3. 为了避免 U-Mode 和 S-Mode 切换的时候切换页表,
+        // 2. 为了避免 U-Mode 和 S-Mode 切换的时候切换页表,
         //    将内核页表 （ swapper_pg_dir ） 复制到每个进程的页表中
-        memcpy(task[i]->pgd, &swapper_pg_dir, PGSIZE);
+        memcpy((char *)task[i]->pgd, &swapper_pg_dir, PGSIZE);
 
-        // 4. 将 uapp 所在的页面映射到每个进行的页表中
-        map_uapp(task[i]);
+        // 3. 将 uapp 所在的页面映射到每个进行的页表中
+        // map_uapp_bin(task[i]);
+        map_uapp_elf(task[i]);
 
-        // 5. 设置用户态栈
+        // 4. 设置用户态栈
         set_ustack(task[i]);
     }
 
     printk("...proc_init done!\n");
 }
 
-void map_uapp(struct task_struct *t) {
+void map_uapp_bin(struct task_struct *t){
+    // 将 uapp 所在的页面映射到每个进行的页表中。
+    // 注意，在程序运行过程中，有部分数据不在栈上，而在初始化的过程中就已经被分配了空间
+    // 所以，二进制文件需要先被拷贝到一块某个进程专用的内存之后
+    // 再进行映射，防止所有的进程共享数据，造成预期外的进程间相互影响
+
+    /* 将二进制文件需要拷贝到一块某个进程专用的内存 */
+    uint64 num_pages_to_copy = (uapp_end - uapp_start) / PGSIZE + 1;
+    uint64 pages_dest_addr = alloc_pages(num_pages_to_copy);
+    uint64 pages_src_addr = (uint64) uapp_start;
+    // p_offset：段内容的开始位置相对于文件开头的偏移量
+    memcpy((uint64 *)pages_dest_addr, (uint64 *)pages_src_addr, num_pages_to_copy * PGSIZE);
+
+    /* 映射 */
+    uint64 pages_perms = PTE_USER | PTE_EXECUTE | PTE_WRITE | PTE_READ | PTE_VALID;
+    // page table entry: 4|3|2|1|0
+    //                   U|X|W|R|V
+
+    create_mapping((uint64 *) t->pgd, (uint64) USER_START,
+                   pages_dest_addr - PA2VA_OFFSET, num_pages_to_copy * PGSIZE, pages_perms);
+}
+
+void map_uapp_elf(struct task_struct *t) {
     // 将 uapp 所在的页面映射到每个进行的页表中。
     // 注意，在程序运行过程中，有部分数据不在栈上，而在初始化的过程中就已经被分配了空间
     // 所以，二进制文件需要先被拷贝到一块某个进程专用的内存之后
@@ -105,11 +130,11 @@ void map_uapp(struct task_struct *t) {
 
     Elf64_Ehdr *ehdr = (Elf64_Ehdr *) uapp_start; // 获取ELF文件头
 
-    Elf64_Phdr *phdr_start = (Elf64_Phdr *) ehdr + ehdr->e_phoff;
+    uint64 phdr_start = (uint64) ehdr + ehdr->e_phoff;
     // 获取ELF进程文件头序列首元素（e_phoff：ELF程序文件头数组相对ELF文件头的偏移地址）
 
-    for (Elf64_Half i = 0; i < ehdr->e_phnum; i++) {
-        Elf64_Phdr *phdr_curr = phdr_start + (i * ehdr->e_phentsize);
+    for (int i = 0; i < ehdr->e_phnum; i++) {
+        Elf64_Phdr *phdr_curr = (Elf64_Phdr *)(phdr_start + i * sizeof(Elf64_Phdr));
         // Elf64_Phdr *phdr_curr = phdr_start + (i * sizeof(Elf64_Phdr));
         // ELF程序文件头数组下标为 i 的元素，每个元素大小为 ehdr->e_phentsize（56B）
 
@@ -121,22 +146,22 @@ void map_uapp(struct task_struct *t) {
          * 如果 p_memsz 大于 p_filesz，在内存中多出的存储空间应填 0 补充 */
         if (phdr_curr->p_type == PT_LOAD) {
             /* 1. */
-            uint64 vaddr_round = (uint64) phdr_curr->p_vaddr - PGROUNDDOWN(phdr_curr->p_vaddr);
+            uint64 vaddr_round = (uint64) (phdr_curr->p_vaddr) - PGROUNDDOWN(phdr_curr->p_vaddr);
 
             uint64 num_pages_to_copy = (vaddr_round + phdr_curr->p_memsz) / PGSIZE + 1;
             uint64 pages_dest_addr = alloc_pages(num_pages_to_copy);
-            uint64 pages_src_addr = (uint64) (ehdr + phdr_curr->p_offset);
+            uint64 pages_src_addr = (uint64) (uapp_start) + phdr_curr->p_offset;
             // p_offset：段内容的开始位置相对于文件开头的偏移量
-            memcpy((uint64 *)pages_dest_addr, (uint64 *)pages_src_addr, vaddr_round + phdr_curr->p_memsz);
+            memcpy((uint64 *)pages_dest_addr + vaddr_round, (uint64 *)pages_src_addr, phdr_curr->p_memsz);
 
             uint64 perms = phdr_curr->p_flags;
-            uint64 perm_r = perms & 4 >> 2, perms_w = perms & 2, perm_x = perms & 1 << 2;
+            uint64 perm_r = (perms & 4) >> 1, perms_w = (perms & 2) << 1, perm_x = (perms & 1) << 3;
             uint64 pages_perms = PTE_USER | perm_x | perms_w | perm_r | PTE_VALID;
             // p_flags: 2|1|0   page table entry: 4|3|2|1|0
             //          R|W|X                     U|X|W|R|V
 
-            create_mapping((uint64 *) t->pgd, PGROUNDDOWN(phdr_curr->p_vaddr),
-                           pages_dest_addr - PA2VA_OFFSET, num_pages_to_copy, pages_perms);
+            create_mapping((uint64 *) t->pgd, (uint64)PGROUNDDOWN(phdr_curr->p_vaddr),
+                           pages_dest_addr - PA2VA_OFFSET, num_pages_to_copy * PGSIZE, pages_perms);
         }
     }
 }
@@ -146,10 +171,9 @@ void set_ustack(struct task_struct *t) {
     // 用户态栈和内核态栈
     // 其中，内核态栈在 lab3 中我们已经设置好了, 可以通过 alloc_page 接口申请一个空的页面来作为用户态栈，
     // 并映射到进程的页表中
-    Elf64_Ehdr *ehdr = (Elf64_Ehdr *) uapp_start; // 获取ELF文件头
 
     uint64 user_stack_addr = alloc_page();
-    create_mapping((uint64 *) t->pgd, USER_END - PGSIZE, user_stack_addr - PA2VA_OFFSET, 1,
+    create_mapping((uint64 *) t->pgd, USER_END - PGSIZE, user_stack_addr - PA2VA_OFFSET, PGSIZE,
                    PTE_USER | PTE_WRITE | PTE_READ | PTE_VALID);
     // 对于每个用户进程来说，它的栈地址是一致的，但是在物理空间下，每个用户栈存储的实际物理地址是有区别的
 }
@@ -179,7 +203,7 @@ void switch_to(struct task_struct *next) {
     if (current == next)
         return;
 
-    printk("switch from [PID = %d] to [PID = %d]\n", (int) current->pid, (int) next->pid);
+    // printk("switch from [PID = %d] to [PID = %d]\n", (int) current->pid, (int) next->pid);
 
     struct task_struct *prev = current;
     current = next;
@@ -190,7 +214,7 @@ void do_timer(void) {
     // 1. 如果当前线程是 idle 线程 直接进行调度
     // 2. 如果当前线程不是 idle 对当前线程的运行剩余时间减1 若剩余时间仍然大于0 则直接返回 否则进行调度
 
-    printk("current pid: %d, counter: %d\n", (int) current->pid, (int) current->counter);
+    // printk("current pid: %d, counter: %d\n", (int) current->pid, (int) current->counter);
     if (current == idle)
         schedule();
     else {
@@ -237,7 +261,7 @@ void schedule()
 #ifdef PRIORITY
 
 void schedule() {
-    printk("PRIORITY schedule\n");
+    // printk("PRIORITY schedule\n");
 
     uint64 i, next, c;
     struct task_struct **p;

@@ -5,7 +5,16 @@ _traps:
     # YOUR CODE HERE
     # -----------
 
-    # 1. save 32 registers and sepc to stack
+    # 1. switch sp
+    csrr t0, sstatus
+    andi t0, t0, 0x100
+    bne t0, x0, _trap_recovery  # SPP != USER, S-MODE, no switch
+    csrr t0, sscratch
+    csrw sscratch, sp
+    addi sp, t0, 0
+
+_trap_recovery:
+    # 2. save 32 registers and sepc to stack
     addi sp, sp, -272
     sd x1, 0(sp)
     sd x2, 8(sp)
@@ -48,14 +57,15 @@ _traps:
 
     # -----------
 
-    # 2. call trap_handler
+    # 3. call trap_handler
     csrr a0, scause
     csrr a1, sepc
+    add a2, sp, x0
     jal ra, trap_handler
 
     # -----------
 
-    # 3. restore sepc and 32 registers (x2(sp) should be restore last) from stack
+    # 4. restore sepc and 32 registers (x2(sp) should be restore last) from stack
 
     # lab4 addition: loads of sepc sstatus sscratch
     ld t0, 264(sp)
@@ -100,7 +110,7 @@ _traps:
 
     # -----------
 
-    # 4. return from trap
+    # 5. return from trap
 
     # lab4 addition: when S-mode -> U-mode, change sp
 
@@ -108,9 +118,11 @@ _traps:
     sw t0, 0(sp)    # save t0 for future recover
 
     csrr t0, sstatus             # t0 changed here
-    andi t0, t0, 0x100
+    li t1,0x100
+    and t0, t0, t1
     bne t0, x0, SRET_FROM_TRAP   # SPP != USER-MODE
     ld t0, 0(sp)
+    addi sp, sp, 8
     csrrw sp, sscratch, sp       # swapping values(this operation meets the requirements)
     # csrr t0, sscratch
     # csrw sscratch, sp
@@ -128,8 +140,8 @@ SRET_FROM_TRAP:
     .extern dummy
     .globl __dummy
 __dummy:
-    la t0, dummy
-    csrw sepc, t0
+    # la t0, dummy
+    # csrw sepc, t0
 
     # lab4: S-mode -> U-mode, change sp
     csrr t0, sscratch   # get u-mode sp
@@ -160,12 +172,12 @@ __switch_to:
     sd s10, 96(t0)
     sd s11, 104(t0)
     # lab4 addition: stores of sepc sstatus sscratch
-    csrr t0, sepc
-    sd t0, 112(t0)
-    csrr t0, sstatus
-    sd t0, 120(t0)
-    csrr t0, sscratch
-    sd t0, 128(t0)
+    csrr t1, sepc
+    sd t1, 112(t0)
+    csrr t1, sstatus
+    sd t1, 120(t0)
+    csrr t1, sscratch
+    sd t1, 128(t0)
 
     # restore state from next process
     # t0 -> &nextTask.thread_struct
@@ -201,7 +213,7 @@ __switch_to:
     
     li t3, 8
     slli t3, t3, 60 # t3 == satp Page-based 39 bit virtual addressing mode
-    or t2, t2, t3   # t2 == satp value
+    add t2, t2, t3   # t2 == satp value
 
     csrw satp, t2
 

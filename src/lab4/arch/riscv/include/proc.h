@@ -45,7 +45,6 @@ struct thread_struct {
 // };
 
 struct task_struct {
-    // struct thread_info* thread_info;
     struct thread_info thread_info;
     uint64_t state;
     uint64_t counter;
@@ -61,7 +60,8 @@ struct task_struct {
 void task_init();
 
 /* 将 uapp 所在的页面映射到每个进行的页表中 */
-void map_uapp(struct task_struct* t);
+void map_uapp_bin(struct task_struct* t);
+void map_uapp_elf(struct task_struct* t);
 
 /* 设置用户态栈 */
 void set_ustack(struct task_struct* t);

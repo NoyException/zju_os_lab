@@ -7,6 +7,6 @@
 
 #include "defs.h"
 
-void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
+int create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
 
 #endif //OS_VM_H
