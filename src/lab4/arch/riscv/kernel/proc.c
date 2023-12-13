@@ -71,8 +71,8 @@ void task_init() {
         // 1. 对于每个进程，初始化刚刚在 thread_struct 中添加的三个变量：
         //    1.1. 将 sepc 设置为 USER_START
         //    （在elf里，sepc改为ehdr->e_entry）
-        task[i]->thread.sepc = USER_START;
-        // task[i]->thread.sepc = ((Elf64_Ehdr *) uapp_start)->e_entry;
+        // task[i]->thread.sepc = USER_START;
+        task[i]->thread.sepc = ((Elf64_Ehdr *) uapp_start)->e_entry;
         //    1.2. 配置 sstatus 中的 SPP（使得 sret 返回至 U-Mode）,
         //         SPIE （sret 之后开启中断）, SUM（S-Mode 可以访问 User 页面）
         task[i]->thread.sstatus = SPP(SPP_USER) | SPIE(1) | SUM(1);
@@ -88,8 +88,8 @@ void task_init() {
         memcpy((char *)task[i]->pgd, &swapper_pg_dir, PGSIZE);
 
         // 3. 将 uapp 所在的页面映射到每个进行的页表中
-        map_uapp_bin(task[i]);
-        // map_uapp_elf(task[i]);
+        // map_uapp_bin(task[i]);
+        map_uapp_elf(task[i]);
 
         // 4. 设置用户态栈
         set_ustack(task[i]);
@@ -152,7 +152,7 @@ void map_uapp_elf(struct task_struct *t) {
             uint64 pages_dest_addr = alloc_pages(num_pages_to_copy);
             uint64 pages_src_addr = (uint64) (uapp_start) + phdr_curr->p_offset;
             // p_offset：段内容的开始位置相对于文件开头的偏移量
-            memcpy((uint64 *)pages_dest_addr + vaddr_round, (uint64 *)pages_src_addr, phdr_curr->p_memsz);
+            memcpy((uint64 *)(pages_dest_addr + vaddr_round), (uint64 *)pages_src_addr, phdr_curr->p_memsz);
 
             uint64 perms = phdr_curr->p_flags;
             uint64 perm_r = (perms & 4) >> 1, perms_w = (perms & 2) << 1, perm_x = (perms & 1) << 3;
