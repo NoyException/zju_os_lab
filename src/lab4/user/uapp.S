@@ -4,4 +4,4 @@
 # .incbin "uapp.bin"
 
 # load ELF
-.incbin "uapp"
+.incbin "uapp.elf"
