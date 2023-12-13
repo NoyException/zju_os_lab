@@ -1,7 +1,7 @@
 .section .uapp
 
 # load binary
-# .incbin "uapp.bin"
+.incbin "uapp.bin"
 
 # load ELF
-.incbin "uapp"
+# .incbin "uapp"
