@@ -63,9 +63,6 @@ void task_init();
 void map_uapp_bin(struct task_struct* t);
 void map_uapp_elf(struct task_struct* t);
 
-/* 设置用户态栈 */
-void set_ustack(struct task_struct* t);
-
 /* 在时钟中断处理中被调用 用于判断是否需要进行调度 */
 void do_timer();
 

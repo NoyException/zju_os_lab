@@ -8,7 +8,8 @@ _traps:
     # 1. switch sp
     csrr t0, sstatus
     andi t0, t0, 0x100
-    bne t0, x0, _trap_recovery  # SPP != USER, S-MODE, no switch
+    # skip switching stack if the previous mode is S-mode
+    bne t0, x0, _trap_recovery  # SPP != USER
     csrr t0, sscratch
     csrw sscratch, sp
     addi sp, t0, 0

@@ -53,3 +53,7 @@ Module.symvers
 Mkfile.old
 dkms.conf
 **/.DS_Store
+**/vmlinux
+**/Image
+**/uapp
+**/uapp.bin

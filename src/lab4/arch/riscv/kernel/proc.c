@@ -59,8 +59,8 @@ void task_init() {
         // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，为了单元测试的需要，counter 和 priority 进行如下赋值：
         //      task[i].counter  = task_test_counter[i];
         //      task[i].priority = task_test_priority[i];
-        task[i]->counter = 0;//task_test_counter[i];
-        task[i]->priority = rand();//task_test_priority[i];
+        task[i]->counter = 1;//task_test_counter[i];
+        task[i]->priority = 1;//task_test_priority[i];
         task[i]->pid = i;
         // 3. 为 task[1] ~ task[NR_TASKS - 1] 设置 `thread_struct` 中的 `ra` 和 `sp`,
         // 4. 其中 `ra` 设置为 __dummy （见 4.3.2）的地址,  `sp` 设置为 该线程申请的物理页的高地址
@@ -92,7 +92,15 @@ void task_init() {
         map_uapp_elf(task[i]);
 
         // 4. 设置用户态栈
-        set_ustack(task[i]);
+        // 设置用户态栈。对每个用户态进程，其拥有两个栈：
+        // 用户态栈和内核态栈
+        // 其中，内核态栈在 lab3 中我们已经设置好了, 可以通过 alloc_page 接口申请一个空的页面来作为用户态栈，
+        // 并映射到进程的页表中
+
+        uint64 user_stack_addr = alloc_page();
+        create_mapping((uint64 *) task[i]->pgd, USER_END - PGSIZE, user_stack_addr - PA2VA_OFFSET, PGSIZE,
+                       PTE_USER | PTE_WRITE | PTE_READ | PTE_VALID);
+        // 对于每个用户进程来说，它的栈地址是一致的，但是在物理空间下，每个用户栈存储的实际物理地址是有区别的
     }
 
     printk("...proc_init done!\n");
@@ -130,8 +138,8 @@ void map_uapp_elf(struct task_struct *t) {
 
     Elf64_Ehdr *ehdr = (Elf64_Ehdr *) uapp_start; // 获取ELF文件头
 
-    uint64 phdr_start = (uint64) ehdr + ehdr->e_phoff;
     // 获取ELF进程文件头序列首元素（e_phoff：ELF程序文件头数组相对ELF文件头的偏移地址）
+    uint64 phdr_start = (uint64) ehdr + ehdr->e_phoff;
 
     for (int i = 0; i < ehdr->e_phnum; i++) {
         Elf64_Phdr *phdr_curr = (Elf64_Phdr *)(phdr_start + i * sizeof(Elf64_Phdr));
@@ -166,19 +174,6 @@ void map_uapp_elf(struct task_struct *t) {
     }
 }
 
-void set_ustack(struct task_struct *t) {
-    // 设置用户态栈。对每个用户态进程，其拥有两个栈：
-    // 用户态栈和内核态栈
-    // 其中，内核态栈在 lab3 中我们已经设置好了, 可以通过 alloc_page 接口申请一个空的页面来作为用户态栈，
-    // 并映射到进程的页表中
-
-    uint64 user_stack_addr = alloc_page();
-    create_mapping((uint64 *) t->pgd, USER_END - PGSIZE, user_stack_addr - PA2VA_OFFSET, PGSIZE,
-                   PTE_USER | PTE_WRITE | PTE_READ | PTE_VALID);
-    // 对于每个用户进程来说，它的栈地址是一致的，但是在物理空间下，每个用户栈存储的实际物理地址是有区别的
-}
-
-// arch/riscv/kernel/proc.c
 void dummy() {
 //    schedule_test();
     uint64 MOD = 1000000007;
@@ -203,7 +198,7 @@ void switch_to(struct task_struct *next) {
     if (current == next)
         return;
 
-    // printk("switch from [PID = %d] to [PID = %d]\n", (int) current->pid, (int) next->pid);
+//    printk("switch from [PID = %d] to [PID = %d]\n", (int) current->pid, (int) next->pid);
 
     struct task_struct *prev = current;
     current = next;

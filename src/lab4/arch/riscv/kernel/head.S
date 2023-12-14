@@ -18,11 +18,11 @@ _start:
 
     call relocate
 
-    jal ra, mm_init # initialize physical memory
+    call mm_init
 
     call setup_vm_final
 
-    jal ra, task_init # initialize task threads
+    call task_init
 
     # ----------------------
 
@@ -40,7 +40,7 @@ _start:
     # ----------------------
 
     # set first time interrupt
-    jal ra, clock_set_next_event
+    call clock_set_next_event
 
     # ----------------------
 
