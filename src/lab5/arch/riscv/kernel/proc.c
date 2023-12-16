@@ -34,6 +34,27 @@ extern char _eramdisk[];
 char *uapp_start = _sramdisk;
 char *uapp_end = _eramdisk;
 
+void do_mmap(struct task_struct *task, uint64_t addr, uint64_t length, uint64_t flags,
+             uint64_t vm_content_offset_in_file, uint64_t vm_content_size_in_file){
+    // 1. 为 task 分配一个新的 VMA
+    struct vm_area_struct *vma = &task->vmas[task->vma_cnt++];
+    // 2. 设置 VMA 的 vm_start, vm_end, vm_flags, vm_content_offset_in_file, vm_content_size_in_file
+    vma->vm_start = addr;
+    vma->vm_end = addr + length;
+    vma->vm_flags = flags;
+    vma->vm_content_offset_in_file = vm_content_offset_in_file;
+    vma->vm_content_size_in_file = vm_content_size_in_file;
+}
+
+struct vm_area_struct *find_vma(struct task_struct *task, uint64_t addr){
+    for(int i = 0; i < task->vma_cnt; i++){
+        if(task->vmas[i].vm_start <= addr && addr < task->vmas[i].vm_end){
+            return &task->vmas[i];
+        }
+    }
+    return NULL;
+}
+
 void task_init() {
 //    test_init(NR_TASKS);
     // 1. 调用 kalloc() 为 idle 分配一个物理页
