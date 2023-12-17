@@ -83,7 +83,7 @@ void task_init() {
         // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，为了单元测试的需要，counter 和 priority 进行如下赋值：
         //      task[i].counter  = task_test_counter[i];
         //      task[i].priority = task_test_priority[i];
-        task[i]->counter = 1;//task_test_counter[i];
+        task[i]->counter = rand()%10+1;//task_test_counter[i];
         task[i]->priority = 1;//task_test_priority[i];
         task[i]->pid = i;
         // 3. 为 task[1] ~ task[NR_TASKS - 1] 设置 `thread_struct` 中的 `ra` 和 `sp`,
@@ -241,6 +241,7 @@ void do_timer(void) {
     else {
         if (current->counter > 0)
             current->counter--;
+//        printk("[PID = %d] counter = %d\n",current->pid,current->counter);
         if (current->counter <= 0)
             schedule();
     }
@@ -249,7 +250,6 @@ void do_timer(void) {
 #ifdef SJF
 void schedule()
 {
-    printk("SJF schedule\n");
 
     struct task_struct *next = idle;
     int counter = 0x7fffffff;
@@ -275,6 +275,7 @@ void schedule()
         return;
     }
 
+    printk("SJF: switch to [PID=%d], counter=%d\n",next->pid,next->counter);
     switch_to(next);
 }
 #endif
