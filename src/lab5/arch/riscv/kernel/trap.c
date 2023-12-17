@@ -62,7 +62,6 @@ void trap_handler(unsigned long scause, unsigned long sepc, struct pt_regs *regs
             //1. 通过 stval 获得访问出错的虚拟内存地址（Bad Address）
             uint64 bad_addr = regs->stval;
             uint64 bad_addr_floor = PGROUNDDOWN(bad_addr);
-            printk("[S]1 Page Fault: scause=%lx, addr=%lx, floor=%lx\n", scause, bad_addr, bad_addr_floor);
 
             //2. 通过 find_vma() 查找 Bad Address 是否在某个 vma 中
             struct vm_area_struct *vma = find_vma(get_current_task(), bad_addr);
@@ -71,23 +70,17 @@ void trap_handler(unsigned long scause, unsigned long sepc, struct pt_regs *regs
             //3. 分配一个页，将这个页映射到对应的用户地址空间
             uint64 page_addr = alloc_page();
             create_mapping(get_current_task()->pgd, bad_addr_floor, page_addr - PA2VA_OFFSET, PGSIZE,
-                           (vma->vm_flags & (~(uint64_t) VM_ANONYM)));
-            uint64 pa = get_mapping(get_current_task()->pgd, bad_addr);
-            printk("[S]2 page_addr: %lx, pa: %lx\n", page_addr - PA2VA_OFFSET, pa);
+                           (vma->vm_flags | 0b10001));
 
             //4. 通过 (vma->vm_flags & VM_ANONYM) 获得当前的 VMA 是否是匿名空间
             //5. 根据 VMA 匿名与否决定将新的页清零或是拷贝 uapp 中的内容
             if (vma->vm_flags & VM_ANONYM) {
-                printk("[S]3 Anonymous page\n");
                 memset((void *) page_addr, 0, PGSIZE);
             } else {
-                printk("[S]3 File page\n");
-                printk("[S]4 vm_start: %lx, vm_end: %lx\n", vma->vm_start, vma->vm_end);
                 if (bad_addr - vma->vm_start < PGSIZE) {
                     uint64 start_offset = vma->vm_start - PGROUNDDOWN(vma->vm_start);
                     uint64 src_addr = vma->vm_content_offset_in_file + (uint64) uapp_start;
                     uint64 size = min(PGSIZE - start_offset, vma->vm_end - vma->vm_start);
-                    printk("[S]5 start: %lx, src_addr: %lx, size: %lx\n", (page_addr + start_offset), src_addr, size);
                     memcpy((void *) (page_addr + start_offset), (void *) src_addr, size);
                 } else {
                     uint64 src_addr =
@@ -95,9 +88,6 @@ void trap_handler(unsigned long scause, unsigned long sepc, struct pt_regs *regs
                     uint64 size = min(PGSIZE, vma->vm_end - bad_addr_floor);
                     memcpy((void *) page_addr, (void *) src_addr, size);
                 }
-                flush_tlb();
-                printk("[S]6 flush\n");
-                printk("[S] value=%lx\n\n", *(uint64*)bad_addr);
             }
         } else {
             printk("[S] Unhandled exception\n");

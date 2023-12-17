@@ -86,7 +86,10 @@ void setup_vm_final(void) {
 }
 
 
-/** 创建多级页表映射关系 */
+/**
+ * 创建多级页表映射关系
+ * perm: X|W|R|V
+ */
 void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     /*
     pgtbl 为根页表的基地址
