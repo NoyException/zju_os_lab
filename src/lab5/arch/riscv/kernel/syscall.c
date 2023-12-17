@@ -6,8 +6,6 @@
 #include "proc.h"
 #include "printk.h"
 
-extern struct task_struct* current;
-
 uint64 sys_write(unsigned int fd, const char* buf, size_t count){
     if(fd == 1){
         char str[count+1];
@@ -21,5 +19,5 @@ uint64 sys_write(unsigned int fd, const char* buf, size_t count){
 }
 
 uint64 sys_getpid(){
-    return current->pid;
+    return get_current_task()->pid;
 }

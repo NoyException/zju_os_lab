@@ -1,7 +1,6 @@
 #include "defs.h"
 #include "string.h"
 #include "mm.h"
-#include "stdint.h"
 #include "printk.h"
 
 extern char _ekernel[];
@@ -17,13 +16,13 @@ struct {
 
 
 
-void kfreerange(char *start, char *end) {
-    // char *addr = (char *)PGROUNDUP((uint64_t)start);
-    // for (; (uint64_t)(addr) + PGSIZE <= (uint64_t)end; addr += PGSIZE) {
-    //     kfree((uint64_t)addr);
-    // }
-    return;
-}
+//void kfreerange(char *start, char *end) {
+//    // char *addr = (char *)PGROUNDUP((uint64_t)start);
+//    // for (; (uint64_t)(addr) + PGSIZE <= (uint64_t)end; addr += PGSIZE) {
+//    //     kfree((uint64_t)addr);
+//    // }
+//    return;
+//}
 
 
 

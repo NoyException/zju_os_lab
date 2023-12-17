@@ -1,4 +1,3 @@
-#include "types.h"
 #include "sbi.h"
 
 struct sbiret sbi_ecall(int ext, int fid, uint64 arg0,

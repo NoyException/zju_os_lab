@@ -2,9 +2,6 @@
     .align 2
     .globl _traps
 _traps:
-    # YOUR CODE HERE
-    # -----------
-
     # 1. switch sp
     csrr t0, sstatus
     andi t0, t0, 0x100
@@ -16,7 +13,7 @@ _traps:
 
 _trap_recovery:
     # 2. save 32 registers and sepc to stack
-    addi sp, sp, -272
+    addi sp, sp, -280
     sd x1, 0(sp)
     sd x2, 8(sp)
     sd x3, 16(sp)
@@ -55,6 +52,8 @@ _trap_recovery:
     sd t0, 256(sp)
     csrr t0, sscratch
     sd t0, 264(sp)
+    csrr t0, stval
+    sd t0, 272(sp)
 
     # -----------
 
@@ -69,6 +68,8 @@ _trap_recovery:
     # 4. restore sepc and 32 registers (x2(sp) should be restore last) from stack
 
     # lab4 addition: loads of sepc sstatus sscratch
+    ld t0, 272(sp)
+    csrw stval, t0
     ld t0, 264(sp)
     csrw sscratch, t0
     ld t0, 256(sp)
@@ -107,7 +108,7 @@ _trap_recovery:
     ld x30, 232(sp)
     ld x31, 240(sp)
     ld x2, 8(sp)
-    addi sp, sp, 272
+    addi sp, sp, 280
 
     # -----------
 

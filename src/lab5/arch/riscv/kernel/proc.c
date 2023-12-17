@@ -31,8 +31,12 @@ struct task_struct *task[NR_TASKS]; // 线程数组, 所有的线程都保存在
 extern char _sramdisk[];
 extern char _eramdisk[];
 /* 定位uapp段 */
-char *uapp_start = _sramdisk;
-char *uapp_end = _eramdisk;
+static char *uapp_start = _sramdisk;
+static char *uapp_end = _eramdisk;
+
+struct task_struct *get_current_task() {
+    return current;
+}
 
 void do_mmap(struct task_struct *task, uint64_t addr, uint64_t length, uint64_t flags,
              uint64_t vm_content_offset_in_file, uint64_t vm_content_size_in_file){
@@ -117,9 +121,10 @@ void task_init() {
         // 其中，内核态栈在 lab3 中我们已经设置好了, 可以通过 alloc_page 接口申请一个空的页面来作为用户态栈，
         // 并映射到进程的页表中
 
-        uint64 user_stack_addr = alloc_page();
-        create_mapping((uint64 *) task[i]->pgd, USER_END - PGSIZE, user_stack_addr - PA2VA_OFFSET, PGSIZE,
-                       PTE_USER | PTE_WRITE | PTE_READ | PTE_VALID);
+        do_mmap(task[i], USER_END - PGSIZE, PGSIZE, VM_R_MASK | VM_W_MASK | VM_ANONYM, 0, 0);
+//        uint64 user_stack_addr = alloc_page();
+//        create_mapping((uint64 *) task[i]->pgd, USER_END - PGSIZE, user_stack_addr - PA2VA_OFFSET, PGSIZE,
+//                       PTE_USER | PTE_WRITE | PTE_READ | PTE_VALID);
         // 对于每个用户进程来说，它的栈地址是一致的，但是在物理空间下，每个用户栈存储的实际物理地址是有区别的
     }
 
@@ -133,19 +138,19 @@ void map_uapp_bin(struct task_struct *t){
     // 再进行映射，防止所有的进程共享数据，造成预期外的进程间相互影响
 
     /* 将二进制文件需要拷贝到一块某个进程专用的内存 */
-    uint64 num_pages_to_copy = (uapp_end - uapp_start) / PGSIZE + 1;
-    uint64 pages_dest_addr = alloc_pages(num_pages_to_copy);
-    uint64 pages_src_addr = (uint64) uapp_start;
-    // p_offset：段内容的开始位置相对于文件开头的偏移量
-    memcpy((uint64 *)pages_dest_addr, (uint64 *)pages_src_addr, num_pages_to_copy * PGSIZE);
-
-    /* 映射 */
-    uint64 pages_perms = PTE_USER | PTE_EXECUTE | PTE_WRITE | PTE_READ | PTE_VALID;
-    // page table entry: 4|3|2|1|0
-    //                   U|X|W|R|V
-
-    create_mapping((uint64 *) t->pgd, (uint64) USER_START,
-                   pages_dest_addr - PA2VA_OFFSET, num_pages_to_copy * PGSIZE, pages_perms);
+//    uint64 num_pages_to_copy = (uapp_end - uapp_start) / PGSIZE + 1;
+//    uint64 pages_dest_addr = alloc_pages(num_pages_to_copy);
+//    uint64 pages_src_addr = (uint64) uapp_start;
+//    // p_offset：段内容的开始位置相对于文件开头的偏移量
+//    memcpy((uint64 *)pages_dest_addr, (uint64 *)pages_src_addr, num_pages_to_copy * PGSIZE);
+//
+//    /* 映射 */
+//    uint64 pages_perms = PTE_USER | PTE_EXECUTE | PTE_WRITE | PTE_READ | PTE_VALID;
+//    // page table entry: 4|3|2|1|0
+//    //                   U|X|W|R|V
+//
+//    create_mapping((uint64 *) t->pgd, (uint64) USER_START,
+//                   pages_dest_addr - PA2VA_OFFSET, num_pages_to_copy * PGSIZE, pages_perms);
 }
 
 void map_uapp_elf(struct task_struct *t) {
@@ -173,23 +178,24 @@ void map_uapp_elf(struct task_struct *t) {
          * 段的内容会被从文件中拷贝到内存中。段在文件中的大小是 p_filesz，在内存中的大小是 p_memsz。
          * 如果 p_memsz 大于 p_filesz，在内存中多出的存储空间应填 0 补充 */
         if (phdr_curr->p_type == PT_LOAD) {
-            /* 1. */
-            uint64 vaddr_round = (uint64) (phdr_curr->p_vaddr) - PGROUNDDOWN(phdr_curr->p_vaddr);
+            do_mmap(t, phdr_curr->p_vaddr, phdr_curr->p_memsz, phdr_curr->p_flags << 1,
+                    phdr_curr->p_offset, phdr_curr->p_filesz);
+//            uint64 vaddr_round = (uint64) (phdr_curr->p_vaddr) - PGROUNDDOWN(phdr_curr->p_vaddr);
 
-            uint64 num_pages_to_copy = (vaddr_round + phdr_curr->p_memsz) / PGSIZE + 1;
-            uint64 pages_dest_addr = alloc_pages(num_pages_to_copy);
-            uint64 pages_src_addr = (uint64) (uapp_start) + phdr_curr->p_offset;
+//            uint64 num_pages_to_copy = (vaddr_round + phdr_curr->p_memsz) / PGSIZE + 1;
+//            uint64 pages_dest_addr = alloc_pages(num_pages_to_copy);
+//            uint64 pages_src_addr = (uint64) (uapp_start) + phdr_curr->p_offset;
             // p_offset：段内容的开始位置相对于文件开头的偏移量
-            memcpy((uint64 *)(pages_dest_addr + vaddr_round), (uint64 *)pages_src_addr, phdr_curr->p_memsz);
+//            memcpy((uint64 *)(pages_dest_addr + vaddr_round), (uint64 *)pages_src_addr, phdr_curr->p_memsz);
 
-            uint64 perms = phdr_curr->p_flags;
-            uint64 perm_r = (perms & 4) >> 1, perms_w = (perms & 2) << 1, perm_x = (perms & 1) << 3;
-            uint64 pages_perms = PTE_USER | perm_x | perms_w | perm_r | PTE_VALID;
+//            uint64 perms = phdr_curr->p_flags;
+//            uint64 perm_r = (perms & 4) >> 1, perms_w = (perms & 2) << 1, perm_x = (perms & 1) << 3;
+//            uint64 pages_perms = PTE_USER | perm_x | perms_w | perm_r | PTE_VALID;
             // p_flags: 2|1|0   page table entry: 4|3|2|1|0
             //          R|W|X                     U|X|W|R|V
 
-            create_mapping((uint64 *) t->pgd, (uint64)PGROUNDDOWN(phdr_curr->p_vaddr),
-                           pages_dest_addr - PA2VA_OFFSET, num_pages_to_copy * PGSIZE, pages_perms);
+//            create_mapping((uint64 *) t->pgd, (uint64)PGROUNDDOWN(phdr_curr->p_vaddr),
+//                           pages_dest_addr - PA2VA_OFFSET, num_pages_to_copy * PGSIZE, pages_perms);
         }
     }
 }

@@ -41,6 +41,9 @@
 #define PTE_EXECUTE 1 << 3
 #define PTE_USER    1 << 4
 
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) < (b) ? (b) : (a))
+
 /** CSR DEFS */
 #define csr_read(csr)                       \
 ({                                          \

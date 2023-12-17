@@ -33,6 +33,13 @@ extern uint64 _stext;
 extern uint64 _srodata;
 extern uint64 _sdata;
 
+void flush_tlb() {
+    // flush TLB
+    asm volatile("sfence.vma zero, zero");
+    // flush icache
+    asm volatile("fence.i");
+}
+
 void setup_vm_final(void) {
 
     memset(swapper_pg_dir, 0x0, PGSIZE);
@@ -64,11 +71,7 @@ void setup_vm_final(void) {
 
     printk("satp(new): %llx\n", csr_read(satp));
 
-    // flush TLB
-    asm volatile("sfence.vma zero, zero");
-
-    // flush icache
-    asm volatile("fence.i");
+    flush_tlb();
 
     printk("vm setup!\n");
 
@@ -83,9 +86,8 @@ void setup_vm_final(void) {
 }
 
 
-/**** 创建多级页表映射关系 *****/
-/* 不要修改该接口的参数和返回值 */
-int create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
+/** 创建多级页表映射关系 */
+void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     /*
     pgtbl 为根页表的基地址
     va, pa 为需要映射的虚拟地址、物理地址
@@ -128,4 +130,31 @@ int create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) 
         va += 0x1000;
         pa += 0x1000;
     }
+}
+
+uint64 get_mapping(uint64 *pgtbl, uint64 va){
+    uint64 vpn2 = (va >> 30) & 0x1ff;
+    uint64 vpn1 = (va >> 21) & 0x1ff;
+    uint64 vpn0 = (va >> 12) & 0x1ff;
+
+    //第二级页表
+    uint64 *pgtbl1;
+    //检查有效
+    if (!(pgtbl[vpn2] & 1)) {
+        return 0;
+    } else{
+        pgtbl1 = (uint64 *) ((pgtbl[vpn2] >> 10 << 12) + PA2VA_OFFSET);
+    }
+
+    //第三级页表
+    uint64 *pgtbl0;
+    //检查有效
+    if (!(pgtbl1[vpn1] & 1)) {
+        return 0;
+    } else{
+        pgtbl0 = (uint64 *) ((pgtbl1[vpn1] >> 10 << 12) + PA2VA_OFFSET);
+    }
+
+    //物理页
+    return (pgtbl0[vpn0] >> 10 << 12) + (va % 0x1000);
 }

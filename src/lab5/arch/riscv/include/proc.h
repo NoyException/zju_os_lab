@@ -65,6 +65,7 @@ struct task_struct {
     uint64_t vma_cnt;
     struct vm_area_struct vmas[0];//柔性数组，必须在末尾
 };
+struct task_struct *get_current_task();
 void do_mmap(struct task_struct *task, uint64_t addr, uint64_t length, uint64_t flags,
              uint64_t vm_content_offset_in_file, uint64_t vm_content_size_in_file);
 
@@ -93,5 +94,5 @@ struct pt_regs{
     uint64 sepc;
     uint64 sstatus;
     uint64 sscratch;
-    uint64 scause;
+    uint64 stval;
 };
