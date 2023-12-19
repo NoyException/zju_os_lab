@@ -285,7 +285,7 @@ RISC-V 异常处理：当系统运行发生异常时，可即时地通过解析 
 
 * 取消之前实验中对 `U-MODE` 代码以及栈进行的映射
 * 调用 `do_mmap` 函数，建立用户 task 的虚拟地址空间信息，在本次实验中仅包括两个区域:
-    * 代码和数据区域：该区域从 ELF 给出的 Segment 起始地址 `phdr->p_offset` 开始，权限参考 `phdr->p_flags` 进行设置。
+    * 代码和数据区域：该区域从 ELF 给出的 Segment 起始用户态虚拟地址 `phdr->p_vaddr` 开始，对应文件中偏移量为 `phdr->p_offset` 开始的部分。权限参考 `phdr->p_flags` 进行设置。
     * 用户栈：范围为 `[USER_END - PGSIZE, USER_END)` ，权限为 `VM_READ | VM_WRITE`, 并且是匿名的区域。
     <!-- * 由于之前 `load_program` 会同时做好代码和用户栈的设置，此时需要改为只做代码区域的映射。且该函数不再会在 task_init 被调用了，而是在 Page Fault 处理时在进行调用。 -->
 
