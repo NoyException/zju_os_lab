@@ -86,6 +86,7 @@ void trap_handler(unsigned long scause, unsigned long sepc, struct pt_regs *regs
                     uint64 src_addr =
                             vma->vm_content_offset_in_file + (uint64) uapp_start + bad_addr_floor - vma->vm_start;
                     uint64 size = min(PGSIZE, vma->vm_end - bad_addr_floor);
+                    size = min(size, vma->vm_content_size_in_file);
                     memcpy((void *) page_addr, (void *) src_addr, size);
                 }
             }

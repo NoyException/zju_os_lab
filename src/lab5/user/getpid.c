@@ -30,7 +30,7 @@ int main() {
 
     while(1) {
         printf("[PID = %d] is running, variable: %d\n", getpid(), global_variable++);
-        for (unsigned int i = 0; i < 0x3FFFFFF; i++);
+        for (unsigned int i = 0; i < 0x7FFFFFF; i++);
     }
 }
 
