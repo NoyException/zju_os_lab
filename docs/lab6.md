@@ -266,7 +266,7 @@ uint64_t sys_clone(struct pt_regs *regs) {
 ```c
 #define LARGE 1000
 
-unsigned long something_large_here[LARGE] = {0};
+unsigned long something_large_here[512] = {0};
 
 int fib(int times) {
   if (times <= 2) {
