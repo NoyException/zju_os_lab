@@ -53,8 +53,13 @@ void trap_handler(unsigned long scause, unsigned long sepc, struct pt_regs *regs
                 regs->gpr[9] = sys_write(regs->gpr[9], (const char *) regs->gpr[10], regs->gpr[11]);
             else if (regs->gpr[16] == SYS_GETPID)   // a7
                 regs->gpr[9] = sys_getpid();        // a0
-            else if (regs->gpr[16] == SYS_CLONE)   // a7
+            else if (regs->gpr[16] == SYS_CLONE) {   // a7
                 regs->gpr[9] = sys_clone(regs);        // a0
+            }
+            else {
+                printk("[S] Unhandled ecall from user\n");
+                printk("[S] scause: %lx, sepc: %lx, type: %lx\n", scause, sepc, regs->gpr[16]);
+            }
 
             /* 针对系统调用这一类异常， 我们需要手动将 sepc + 4 ：sepc 记录的是触发异常的指令地址，
              * 由于系统调用这类异常处理完成之后， 我们应该继续执行后续的指令，因此需要我们手动修改 sepc 的地址，

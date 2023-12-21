@@ -56,38 +56,38 @@ int global_variable = 0;
 //    return 0;
 //}
 
-int main() {
-    int pid;
+//int main() {
+//    int pid;
+//
+//    for (int i = 0; i < 3; i++)
+//        printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+//
+//    pid = fork();
+//
+//    if (pid == 0) {
+//        while (1) {
+//            printf("[U-CHILD] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+//            for (unsigned int i = 0; i < 0x7FFFFFF; i++);
+//        }
+//    } else {
+//        while (1) {
+//            printf("[U-PARENT] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+//            for (unsigned int i = 0; i < 0x7FFFFFF; i++);
+//        }
+//    }
+//    return 0;
+//}
 
-    for (int i = 0; i < 3; i++)
-        printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+ int main() {
 
-    pid = fork();
+     printf("[U1] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+     printf("fork() : %d\n",fork());
 
-    if (pid == 0) {
-        while (1) {
-            printf("[U-CHILD] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-            for (unsigned int i = 0; i < 0x7FFFFFF; i++);
-        }
-    } else {
-        while (1) {
-            printf("[U-PARENT] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-            for (unsigned int i = 0; i < 0x7FFFFFF; i++);
-        }
-    }
-    return 0;
-}
+     printf("[U2] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+     printf("fork() : %d\n",fork());
 
-// int main() {
-
-//     printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-//     fork();
-
-//     printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-//     fork();
-
-//     while(1) {
-//         printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-//         for (unsigned int i = 0; i < 0x7FFFFFF; i++);
-//     }
-// }
+     while(1) {
+         printf("[U3] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+         for (unsigned int i = 0; i < 0xFFFFFF; i++);
+     }
+ }

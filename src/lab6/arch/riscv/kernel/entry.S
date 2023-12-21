@@ -7,6 +7,7 @@ _traps:
     andi t0, t0, 0x100
     # skip switching stack if the previous mode is S-mode
     bne t0, x0, _trap_recovery  # SPP != USER
+
     csrr t0, sscratch
     csrw sscratch, sp
     addi sp, t0, 0
@@ -78,9 +79,9 @@ __ret_from_fork:
     csrw sscratch, t0
     ld t0, 256(sp)
     csrw sstatus, t0
-
     ld t0, 248(sp)
     csrw sepc, t0
+
     ld x1, 0(sp)
     ld x3, 16(sp)
     ld x4, 24(sp)
@@ -120,27 +121,19 @@ __ret_from_fork:
 
     # lab4 addition: when S-mode -> U-mode, change sp
 
-    addi sp, sp, -8
-    sw t0, 0(sp)    # save t0 for future recover
-
     csrr t0, sstatus             # t0 changed here
-    li t1,0x100
-    and t0, t0, t1
+    andi t0, t0, 0x100
     bne t0, x0, SRET_FROM_TRAP   # SPP != USER-MODE
-    ld t0, 0(sp)
-    addi sp, sp, 8
-    csrrw sp, sscratch, sp       # swapping values(this operation meets the requirements)
-    # csrr t0, sscratch
-    # csrw sscratch, sp
-    # addi sp, t0, 0
-    
+
+    # csrrw sp, sscratch, sp       # swapping values(this operation meets the requirements)
+    csrr t0, sscratch
+    csrw sscratch, sp
+    addi sp, t0, 0
+
     sret
 
 SRET_FROM_TRAP:
-    ld t0, 0(sp)
     sret
-
-    # -----------
 
 
     .extern dummy

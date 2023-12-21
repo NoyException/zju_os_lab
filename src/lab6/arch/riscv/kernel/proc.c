@@ -38,8 +38,18 @@ struct task_struct *get_current_task() {
     return current_task;
 }
 
+struct task_struct *get_task(int pid) {
+    return task[pid];
+}
+
+struct task_struct *set_task(int pid, struct task_struct *new_task) {
+    struct task_struct *old_task = task[pid];
+    task[pid] = new_task;
+    return old_task;
+}
+
 void do_mmap(struct task_struct *task, uint64_t addr, uint64_t length, uint64_t flags,
-             uint64_t vm_content_offset_in_file, uint64_t vm_content_size_in_file){
+             uint64_t vm_content_offset_in_file, uint64_t vm_content_size_in_file) {
     // 1. 为 task 分配一个新的 VMA
     struct vm_area_struct *vma = &task->vmas[task->vma_cnt++];
     // 2. 设置 VMA 的 vm_start, vm_end, vm_flags, vm_content_offset_in_file, vm_content_size_in_file
@@ -50,9 +60,9 @@ void do_mmap(struct task_struct *task, uint64_t addr, uint64_t length, uint64_t 
     vma->vm_content_size_in_file = vm_content_size_in_file;
 }
 
-struct vm_area_struct *find_vma(struct task_struct *task, uint64_t addr){
-    for(int i = 0; i < task->vma_cnt; i++){
-        if(task->vmas[i].vm_start <= addr && addr < task->vmas[i].vm_end){
+struct vm_area_struct *find_vma(struct task_struct *task, uint64_t addr) {
+    for (int i = 0; i < task->vma_cnt; i++) {
+        if (task->vmas[i].vm_start <= addr && addr < task->vmas[i].vm_end) {
             return &task->vmas[i];
         }
     }
@@ -75,16 +85,15 @@ void task_init() {
     current_task = idle;
     task[0] = idle;
 
-    int i = 1;
     // 1. 参考 idle 的设置, 为 task[1] ~ task[NR_TASKS - 1] 进行初始化
-    // for (int i = 1; i < NR_TASKS; ++i) {
+    for (int i = 1; i < 2; ++i) {
         /** LAB2 */
         task[i] = (struct task_struct *) kalloc();
         task[i]->state = TASK_RUNNING;
         // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，为了单元测试的需要，counter 和 priority 进行如下赋值：
         //      task[i].counter  = task_test_counter[i];
         //      task[i].priority = task_test_priority[i];
-        task[i]->counter = rand()%10+1;//task_test_counter[i];
+        task[i]->counter = rand() % 10 + 1;//task_test_counter[i];
         task[i]->priority = 1;//task_test_priority[i];
         task[i]->pid = i;
         // 3. 为 task[1] ~ task[NR_TASKS - 1] 设置 `thread_struct` 中的 `ra` 和 `sp`,
@@ -110,7 +119,7 @@ void task_init() {
 
         // 2. 为了避免 U-Mode 和 S-Mode 切换的时候切换页表,
         //    将内核页表 （ swapper_pg_dir ） 复制到每个进程的页表中
-        memcpy((char *)task[i]->pgd, &swapper_pg_dir, PGSIZE);
+        memcpy((char *) task[i]->pgd, &swapper_pg_dir, PGSIZE);
 
         // 3. 将 uapp 所在的页面映射到每个进行的页表中
         // map_uapp_bin(task[i]);
@@ -127,12 +136,16 @@ void task_init() {
 //        create_mapping((uint64 *) task[i]->pgd, USER_END - PGSIZE, user_stack_addr - PA2VA_OFFSET, PGSIZE,
 //                       PTE_USER | PTE_WRITE | PTE_READ | PTE_VALID);
         // 对于每个用户进程来说，它的栈地址是一致的，但是在物理空间下，每个用户栈存储的实际物理地址是有区别的
-    // }
+    }
+
+    for (int i = 2; i < NR_TASKS; ++i) {
+        task[i] = NULL;
+    }
 
     printk("...proc_init done!\n");
 }
 
-void map_uapp_bin(struct task_struct *t){
+void map_uapp_bin(struct task_struct *t) {
     // 将 uapp 所在的页面映射到每个进行的页表中。
     // 注意，在程序运行过程中，有部分数据不在栈上，而在初始化的过程中就已经被分配了空间
     // 所以，二进制文件需要先被拷贝到一块某个进程专用的内存之后
@@ -168,7 +181,7 @@ void map_uapp_elf(struct task_struct *t) {
     uint64 phdr_start = (uint64) ehdr + ehdr->e_phoff;
 
     for (int i = 0; i < ehdr->e_phnum; i++) {
-        Elf64_Phdr *phdr_curr = (Elf64_Phdr *)(phdr_start + i * sizeof(Elf64_Phdr));
+        Elf64_Phdr *phdr_curr = (Elf64_Phdr *) (phdr_start + i * sizeof(Elf64_Phdr));
         // Elf64_Phdr *phdr_curr = phdr_start + (i * sizeof(Elf64_Phdr));
         // ELF程序文件头数组下标为 i 的元素，每个元素大小为 ehdr->e_phentsize（56B）
 
@@ -213,7 +226,8 @@ void dummy() {
             }                         // in case that the new counter is also 1, leading the information not printed.
             last_counter = current_task->counter;
             auto_inc_local_var = (auto_inc_local_var + 1) % MOD;
-            printk("[PID = %d] is running. auto_inc_local_var = %d, counter = %d\n", current_task->pid, auto_inc_local_var,
+            printk("[PID = %d] is running. auto_inc_local_var = %d, counter = %d\n", current_task->pid,
+                   auto_inc_local_var,
                    current_task->counter);
         }
     }
@@ -249,16 +263,14 @@ void do_timer(void) {
 }
 
 #ifdef SJF
-void schedule()
-{
+
+void schedule() {
 
     struct task_struct *next = idle;
     int counter = 0x7fffffff;
     int zero = current_task->counter == 0;
-    for (int i = 1; i < NR_TASKS && task[i]; ++i)
-    {
-        if (task[i]->counter > 0 && task[i]->counter < counter)
-        {
+    for (int i = 1; i < NR_TASKS && task[i]; ++i) {
+        if (task[i]->counter > 0 && task[i]->counter < counter) {
             next = task[i];
             counter = task[i]->counter;
         }
@@ -266,19 +278,18 @@ void schedule()
             zero = 0;
     }
 
-    if (zero)
-    {
-        for (int i = 1; i < NR_TASKS && task[i]; ++i)
-        {
+    if (zero) {
+        for (int i = 1; i < NR_TASKS && task[i]; ++i) {
             task[i]->counter = rand() % 10 + 1;
         }
         schedule();
         return;
     }
 
-    printk("SJF: switch to [PID=%d], counter=%d\n",next->pid,next->counter);
+    printk("SJF: switch to [PID=%d], counter=%d\n", next->pid, next->counter);
     switch_to(next);
 }
+
 #endif
 
 #ifdef PRIORITY
