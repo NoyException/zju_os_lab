@@ -53,7 +53,7 @@ lab6
     └── unistd.h
 ```
 
-我们在启动一个用户态程序时默认打开了三个文件，`stdin`，`stdout` 和 `stdout`，他们对应的 file descriptor 分别为 `0`，`1`，`2`。在 `nish` 启动时，会首先向 `stdout` 和 `stdout` 分别写入一段内容，用户态的代码如下所示。
+我们在启动一个用户态程序时默认打开了三个文件，`stdin`，`stdout` 和 `stderr`，他们对应的 file descriptor 分别为 `0`，`1`，`2`。在 `nish` 启动时，会首先向 `stdout` 和 `stdout` 分别写入一段内容，用户态的代码如下所示。
 
 ```c
 // user/shell.c
@@ -294,4 +294,3 @@ void task_init() {
     mbr_init();
 }
 ```
-
