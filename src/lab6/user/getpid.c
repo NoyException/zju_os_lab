@@ -80,14 +80,14 @@ int global_variable = 0;
 
  int main() {
 
-     printf("[U1] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-     printf("fork() : %d\n",fork());
+     printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+     fork();
 
-     printf("[U2] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-     printf("fork() : %d\n",fork());
+     printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+     fork();
 
      while(1) {
-         printf("[U3] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-         for (unsigned int i = 0; i < 0xFFFFFF; i++);
+         printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+         for (unsigned int i = 0; i < 0x7FFFFFF; i++);
      }
  }
