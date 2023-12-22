@@ -59,6 +59,7 @@ void trap_handler(unsigned long scause, unsigned long sepc, struct pt_regs *regs
              * 使得 sret 之后 程序继续执行。 */
             regs->sepc += 4;
         } else if (scause == INSTRUCTION_PAGE_FAULT || scause == LOAD_PAGE_FAULT || scause == STORE_PAGE_FAULT) {
+            printk("[S] Page Fault at va: %lx, sepc: %lx, scause: %lx\n", regs->stval, sepc, scause);
             //1. 通过 stval 获得访问出错的虚拟内存地址（Bad Address）
             uint64 bad_addr = regs->stval;
             uint64 bad_addr_floor = PGROUNDDOWN(bad_addr);
