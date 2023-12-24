@@ -21,13 +21,6 @@ all: clean
 	${MAKE} -C arch/riscv all
 	@echo -e '\n'Build Finished OK
 
-# run: all
-# 	@echo Launch the qemu ......
-# 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default 
-
-# debug: all
-# 	@echo Launch the qemu for debug ......
-# 	@qemu-system-riscv64 -nographic -machine virt -kernel vmlinux -bios default -S -s
 debug: all
 	@echo Launch the qemu ......
 	@qemu-system-riscv64 \
@@ -40,15 +33,6 @@ debug: all
 		-device virtio-blk-device,drive=hd0 \
 		-S -s
 
-
-
-# flash: all
-# 	@echo Launch the qemu ......
-# 	@../qemu-8.1.2/build/qemu-system-riscv64 -nographic -drive file=flash.img,if=pflash,format=raw,unit=1 -machine virt -kernel vmlinux -bios default 
-
-qemu:
-	@make -j192 -C ../qemu-8.1.2/
-
 run: all
 	@echo Launch the qemu ......
 	@qemu-system-riscv64 \
@@ -59,26 +43,6 @@ run: all
 		-global virtio-mmio.force-legacy=false \
 		-drive file=disk.img,if=none,format=raw,id=hd0 \
 		-device virtio-blk-device,drive=hd0
-
-trace: all qemu
-	@echo Launch the qemu ......
-	@../qemu-8.1.2/build/qemu-system-riscv64 \
-		-machine virt \
-		-nographic \
-		-bios default \
-		-kernel vmlinux \
-		-global virtio-mmio.force-legacy=false \
-		-drive file=disk.img,if=none,format=raw,id=hd0 \
-		-device virtio-blk-device,drive=hd0
-
-# -machine dumpdtb=virtio.dtb
-
-# flash: all
-# 	qemu-system-riscv64 -nographic -blockdev node-name=pflash1,driver=file,filename=flash.img -machine virt -kernel vmlinux -bios default
-
-noflash: all
-	@echo Launch the qemu ......
-	@../qemu-8.1.2/build/qemu-system-riscv64 -nographic -drive file=flash.img,if=pflash,format=raw,unit=1 -machine virt -kernel vmlinux -bios default 
 
 clean:
 	${MAKE} -C lib clean
