@@ -4,12 +4,8 @@
 
 ## 实验目的
 
-todo: bpb
-todo: merge to setup
-todo: 
-* todo: shell (60, to finish all)
-* 认识 VFS 及 VFS 中的文件，利用 `read`, `write` 和 `lseek` 对抽象文件进行操作。
-* 实现 FAT32 文件系统的基本功能，并对其中的文件进行读写 (40, finish all)。
+* 为用户态的 Shell 提供 `read` 和 `write` syscall 的实现（完成该部分的所有实现方得 60 分）。
+* 实现 FAT32 文件系统的基本功能，并对其中的文件进行读写（完成该部分的所有实现方得 40 分）。
 
 ## 实验环境
 
@@ -122,7 +118,7 @@ write(1, "hello, stdout!\n", 15);
 write(2, "hello, stderr!\n", 15);
 ```
 
-#### 处理 `stdout` 的写入 (20 pts)
+#### 处理 `stdout` 的写入
 
 我们在用户态已经像上面这样实现好了 `write` 函数来向内核发起 syscall，我们先在内核态完成真实的写入过程，也即将写入的字符输出到串口。
 
@@ -259,7 +255,7 @@ int64_t sys_write(unsigned int fd, const char* buf, uint64_t count) {
 hello, stdout!
 ```
 
-#### 处理 `stderr` 的写入 (20 pts)
+#### 处理 `stderr` 的写入
 
 仿照 `stdout` 的输出过程，完成 `stderr` 的写入，让 `nish` 可以正确打印出
 
@@ -270,7 +266,7 @@ hello, stderr!
 SHELL >
 ```
 
-#### 处理 `stdin` 的读取 (20 pts)
+#### 处理 `stdin` 的读取
 
 此时 `nish` 已经打印出命令行等待输入命令以进行交互了，但是还需要读入从终端输入的命令才能够与人进行交互，所以我们要实现 `stdin` 以获取键盘键入的内容。
 
@@ -331,7 +327,8 @@ this is echo
 * 不涉及磁盘上文件的创建和删除。
 * 不涉及文件大小的修改。
 
-#### 利用 VirtIO 为 QEMU 添加虚拟存储
+#### 准备工作
+##### 利用 VirtIO 为 QEMU 添加虚拟存储
 
 我们为大家构建好了[磁盘镜像](https://drive.google.com/file/d/1CZF8z2v8ZyAYXT1DlYMwzOO1ohAj41-W/view?usp=sharing)，其中包含了一个 MBR 分区表以及一个存储有一些文件的 FAT32 分区。可以使用如下的命令来启动 QEMU，并将该磁盘连接到 QEMU 的一个 VirtIO 接口上，构成一个 `virtio-blk-device`。
 
@@ -358,7 +355,7 @@ create_mapping(task->pgd, io_to_virt(VIRTIO_START), VIRTIO_START, VIRTIO_SIZE * 
 ```
 
 
-#### 初始化 MBR
+##### 初始化 MBR
 
 我们为大家实现了读取 MBR 这一磁盘初始化过程。该过程会搜索磁盘中存在的分区，然后对分区进行初步的初始化。
 
@@ -377,9 +374,9 @@ void task_init() {
 
 这样从第一个用户态进程被初始化完成开始，就能够直接使用 VirtIO，并使用初始化完成的 MBR 表了。
 
-#### 初始化 FAT32 分区
+##### 初始化 FAT32 分区
 
-在 FAT32 分区的第一个扇区中存储了关于这个分区的元数据，首先需要读取并解析这些元数据。
+在 FAT32 分区的第一个扇区中存储了关于这个分区的元数据，首先需要读取并解析这些元数据。我们提供了两个数据结构的定义，`fat32_bpb` 为 FAT32 BIOS Parameter Block 的简写。这是一个物理扇区，其中对应的是这个分区的元数据。首先需要将该扇区的内容读到一个 `fat32_bpb` 数据结构中进行解析。`fat32_volume` 是用来存储我们实验中需要用到的元数据的，需要根据 `fat32_bpb` 中的数据来进行计算并初始化。
 
 ```c
 // fs/fat32.c
@@ -400,7 +397,7 @@ void fat32_init(uint64_t lba, uint64_t size) {
 
 ```
 
-#### 读取 FAT32 文件 (20 pts)
+#### 读取 FAT32 文件
 
 在读取文件之前，首先需要打开对应的文件，这需要实现 `openat` syscall.
 
@@ -509,7 +506,7 @@ int64_t fat32_read(struct file* file, void* buf, uint64_t len) {
 
 
 
-#### 写入 FAT32 文件 (20 pts)
+#### 写入 FAT32 文件
 
 在完成读取后，就可以仿照读取的函数完成对文件的修改。在测试时可以使用 `edit` 命令在 `nish` 中对文件做出修改。需要实现 `fat32_write`，可以参考前面的 `fat32_read` 来进行实现。
 
