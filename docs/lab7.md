@@ -6,9 +6,10 @@
 
 todo: bpb
 todo: merge to setup
-* todo: shell
+todo: 
+* todo: shell (60, to finish all)
 * 认识 VFS 及 VFS 中的文件，利用 `read`, `write` 和 `lseek` 对抽象文件进行操作。
-* 实现 FAT32 文件系统的基本功能，并对其中的文件进行读写。
+* 实现 FAT32 文件系统的基本功能，并对其中的文件进行读写 (40, finish all)。
 
 ## 实验环境
 
