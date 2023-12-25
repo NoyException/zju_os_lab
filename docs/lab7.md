@@ -5,6 +5,7 @@
 ## 实验目的
 
 todo: bpb
+todo: merge to setup
 * todo: shell
 * 认识 VFS 及 VFS 中的文件，利用 `read`, `write` 和 `lseek` 对抽象文件进行操作。
 * 实现 FAT32 文件系统的基本功能，并对其中的文件进行读写。
