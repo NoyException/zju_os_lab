@@ -60,31 +60,6 @@ int next_slash(const char* path) {
     return i;
 }
 
-//void file_name_from_path(const char* path, char* file_name) {
-//    int i = strlen(path) - 1;
-//    while (i >= 0 && path[i] != '/') {
-//        i--;
-//    }
-//    if (i < 0) {
-//        strcpy(file_name, path);
-//    } else {
-//        strcpy(file_name, path + i + 1);
-//    }
-//}
-//
-//void dir_from_path(const char* path, char* dir) {
-//    int i = strlen(path) - 1;
-//    while (i >= 0 && path[i] != '/') {
-//        i--;
-//    }
-//    if (i < 0) {
-//        strcpy(dir, "/");
-//    } else {
-//        strncpy(dir, path, i);
-//        dir[i] = '\0';
-//    }
-//}
-
 void to_upper_case(char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
         if (str[i] >= 'a' && str[i] <= 'z') {
