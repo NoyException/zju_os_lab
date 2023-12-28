@@ -264,9 +264,9 @@ uint64_t sys_clone(struct pt_regs *regs) {
 [lhjgg](https://frightenedfoxcn.github.io/blog/) 给出的样例：
 
 ```c
-#define LARGE 1000
+#define LARGE 512
 
-unsigned long something_large_here[LARGE] = {0};
+unsigned long something_large_here[512] = {0};
 
 int fib(int times) {
   if (times <= 2) {
