@@ -3,9 +3,15 @@
 #include <debug.h>
 #include <clock.h>
 
+#include "proc.h"
+
 volatile struct virtio_regs * virtio_blk_regs = NULL;
 struct vring virtio_blk_ring;
 uint64_t virtio_blk_capacity;
+
+uint64_t virt_to_phys(uint64_t vaddr){
+    return get_kernel_mapping(vaddr);
+}
 
 void virtio_blk_driver_init() {
     virtio_blk_regs->Status = 0;
@@ -57,6 +63,7 @@ void virtio_blk_queue_init() {
         virtio_blk_ring.desc[i - 1].next = i;
     }
 
+    printk("init queue 4\n");
     virtio_blk_regs->QueueSel = 0;
     virtio_blk_regs->QueueNum = VIRTIO_QUEUE_SIZE;
     virtio_blk_regs->QueueAvailLow = 0xffffffff & virt_to_phys((uint64_t)virtio_blk_ring.avail);
@@ -67,6 +74,7 @@ void virtio_blk_queue_init() {
     virtio_blk_regs->QueueUsedHigh = virt_to_phys((uint64_t)virtio_blk_ring.used) >> 32;
     memory_barrier();
 
+    printk("init queue 5\n");
     // virtio_blk_regs->Queue
 
     virtio_blk_regs->QueueReady = 1;

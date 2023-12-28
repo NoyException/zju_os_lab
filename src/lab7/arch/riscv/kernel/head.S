@@ -8,7 +8,10 @@ _start:
     # -  initialize stack  -
     # ----------------------
 
-    li sp, 0x80205000 # physical addr of stack
+    la t0, boot_stack
+    la t1, PA2VA_OFFSET
+    sub t0, t0, t1
+    addi sp, t0, 0 # physical addr of stack
 
     # ---------------------
     # - set up v/m memory -

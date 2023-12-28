@@ -7,6 +7,8 @@
 #include "elf.h"
 #include "string.h"
 #include "vm.h"
+#include "virtio.h"
+#include "mbr.h"
 
 // arch/riscv/kernel/proc.c
 
@@ -71,6 +73,7 @@ struct vm_area_struct *find_vma(struct task_struct *task, uint64_t addr) {
 
 void task_init() {
 //    test_init(NR_TASKS);
+
     // 1. 调用 kalloc() 为 idle 分配一个物理页
     // 2. 设置 state 为 TASK_RUNNING;
     // 3. 由于 idle 不参与调度 可以将其 counter / priority 设置为 0
@@ -136,13 +139,20 @@ void task_init() {
 //        create_mapping((uint64 *) task[i]->pgd, USER_END - PGSIZE, user_stack_addr - PA2VA_OFFSET, PGSIZE,
 //                       PTE_USER | PTE_WRITE | PTE_READ | PTE_VALID);
         // 对于每个用户进程来说，它的栈地址是一致的，但是在物理空间下，每个用户栈存储的实际物理地址是有区别的
+
+        task[i]->files = file_init();
     }
 
     for (int i = 2; i < NR_TASKS; ++i) {
         task[i] = NULL;
     }
 
-    printk("...proc_init done!\n");
+    printk("[S] proc_init done!\n");
+
+    virtio_dev_init();
+    printk("[S] virtio_dev_init done!\n");
+    mbr_init();
+    printk("[S] mbr_init done!\n");
 }
 
 void map_uapp_bin(struct task_struct *t) {

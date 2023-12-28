@@ -13,9 +13,13 @@
 #define LOAD_PAGE_FAULT 0xd
 #define STORE_PAGE_FAULT 0xf
 
-#define SYS_WRITE 64
+#define SYS_OPENAT  56
+#define SYS_CLOSE   57
+#define SYS_LSEEK   62
+#define SYS_READ    63
+#define SYS_WRITE   64
 #define SYS_GETPID  172
-#define SYS_CLONE 220
+#define SYS_CLONE   220
 
 /* In vmlinux.lds */
 extern char _sramdisk[];
@@ -48,17 +52,41 @@ void trap_handler(unsigned long scause, unsigned long sepc, struct pt_regs *regs
             /* 64 号系统调用 sys_write(unsigned int fd, const char* buf, size_t count)
              * 该调用将用户态传递的字符串打印到屏幕上，此处fd为标准输出（1），buf为用户需要打印的起始地址，
              * count为字符串长度，返回打印的字符数。( 具体见 user/printf.c )*/
-            if (regs->gpr[16] == SYS_WRITE) // a7
-                //  a0                       a0            a1                          a2
-                regs->gpr[9] = sys_write(regs->gpr[9], (const char *) regs->gpr[10], regs->gpr[11]);
-            else if (regs->gpr[16] == SYS_GETPID)   // a7
-                regs->gpr[9] = sys_getpid();        // a0
-            else if (regs->gpr[16] == SYS_CLONE) {   // a7
-                regs->gpr[9] = sys_clone(regs);        // a0
-            }
-            else {
-                printk("[S] Unhandled ecall from user\n");
-                printk("[S] scause: %lx, sepc: %lx, type: %lx\n", scause, sepc, regs->gpr[16]);
+
+            switch (regs->gpr[16]) {
+                case SYS_OPENAT: {
+                    regs->gpr[9] = sys_openat(regs->gpr[9], (const char *) regs->gpr[10], regs->gpr[11]);
+                    break;
+                }
+                case SYS_CLOSE: {
+                    regs->gpr[9] = sys_close(regs->gpr[9]);
+                    break;
+                }
+                case SYS_WRITE: {
+                    regs->gpr[9] = sys_write(regs->gpr[9], (const char *) regs->gpr[10], regs->gpr[11]);
+                    break;
+                }
+                case SYS_READ: {
+                    regs->gpr[9] = sys_read(regs->gpr[9], (char *) regs->gpr[10], regs->gpr[11]);
+                    break;
+                }
+                case SYS_LSEEK: {
+                    regs->gpr[9] = sys_lseek(regs->gpr[9], regs->gpr[10], regs->gpr[11]);
+                    break;
+                }
+                case SYS_GETPID: {
+                    regs->gpr[9] = sys_getpid();
+                    break;
+                }
+                case SYS_CLONE: {
+                    regs->gpr[9] = sys_clone(regs);
+                    break;
+                }
+                default: {
+                    printk("[S] Unhandled ecall from user\n");
+                    printk("[S] scause: %lx, sepc: %lx, type: %lx\n", scause, sepc, regs->gpr[16]);
+                    while (1);
+                }
             }
 
             /* 针对系统调用这一类异常， 我们需要手动将 sepc + 4 ：sepc 记录的是触发异常的指令地址，

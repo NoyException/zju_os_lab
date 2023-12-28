@@ -26,3 +26,4 @@ int memcmp(const void *cs, const void *ct, size_t count)
             break;
     return res;
 }
+

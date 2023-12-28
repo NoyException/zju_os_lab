@@ -61,7 +61,7 @@ SECTIONS
 
         . = ALIGN(0x1000);
         _sramdisk = .;
-        *(.uapp .uapp*)
+        *(.ramdisk .ramdisk*)
         _eramdisk = .;
         . = ALIGN(0x1000);
 

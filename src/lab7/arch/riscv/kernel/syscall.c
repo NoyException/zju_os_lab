@@ -13,16 +13,85 @@
 extern void __ret_from_fork();                     // entry.S
 extern uint64 swapper_pg_dir[512] __attribute__((__aligned__(0x1000)));
 
-uint64 sys_write(unsigned int fd, const char *buf, size_t count) {
-    if (fd == 1) {
-        char str[count + 1];
-        for (int i = 0; i < count; i++) {
-            str[i] = buf[i];
+int64_t sys_lseek(unsigned int fd, int64_t offset, int whence) {
+    int64_t ret;
+    struct file* target_file = &(get_current_task()->files[fd]);
+    if (target_file->opened) {
+        if (target_file->perms & FILE_READABLE) {
+            ret = target_file->lseek(target_file, offset, whence);
+        } else {
+            printk("file not readable\n");
+            ret = ERROR_FILE_NOT_OPEN;
         }
-        str[count] = '\0';
-        printk("%s", str);
+    } else {
+        printk("file not open\n");
+        ret = ERROR_FILE_NOT_OPEN;
     }
-    return count;
+    return ret;
+}
+
+int64_t sys_openat(int dfd, const char* filename, int flags) {
+    int fd = -1;
+
+    // Find an available file descriptor first
+    for (int i = 0; i < PGSIZE / sizeof(struct file); i++) {
+        if (!get_current_task()->files[i].opened) {
+            fd = i;
+            break;
+        }
+    }
+
+    // Do actual open
+    file_open(&(get_current_task()->files[fd]), filename, flags);
+
+    return fd;
+}
+
+int64_t sys_close(unsigned int fd) {
+    int64_t ret;
+    struct file* target_file = &(get_current_task()->files[fd]);
+    if (target_file->opened) {
+        target_file->opened = 0;
+        ret = 0;
+    } else {
+        printk("file not open\n");
+        ret = ERROR_FILE_NOT_OPEN;
+    }
+    return ret;
+}
+
+int64_t sys_write(unsigned int fd, const char* buf, uint64_t count) {
+    int64_t ret;
+    struct file* target_file = &(get_current_task()->files[fd]);
+    if (target_file->opened) {
+        if (target_file->perms & FILE_WRITABLE) {
+            ret = target_file->write(target_file, buf, count);
+        } else {
+            printk("file not writable\n");
+            ret = ERROR_FILE_NOT_OPEN;
+        }
+    } else {
+        printk("file not open\n");
+        ret = ERROR_FILE_NOT_OPEN;
+    }
+    return ret;
+}
+
+int64_t sys_read(unsigned int fd, char* buf, uint64_t count) {
+    int64_t ret;
+    struct file* target_file = &(get_current_task()->files[fd]);
+    if (target_file->opened) {
+        if (target_file->perms & FILE_READABLE) {
+            ret = target_file->read(target_file, buf, count);
+        } else {
+            printk("file not readable\n");
+            ret = ERROR_FILE_NOT_OPEN;
+        }
+    } else {
+        printk("file not open\n");
+        ret = ERROR_FILE_NOT_OPEN;
+    }
+    return ret;
 }
 
 uint64 sys_getpid() {

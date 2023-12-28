@@ -1,6 +1,7 @@
 // arch/riscv/include/proc.h
 
 #include "types.h"
+#include "fs.h"
 
 #define NR_TASKS (1 + 4) // 用于控制 最大线程数量 （idle 线程 + 31 内核线程）
 
@@ -62,9 +63,12 @@ struct task_struct {
     struct thread_struct thread;
     pagetable_t pgd;
 
+    struct file *files;
+
     uint64_t vma_cnt;
     struct vm_area_struct vmas[0];//柔性数组，必须在末尾
 };
+
 struct task_struct *get_current_task();
 struct task_struct *get_task(int pid);
 struct task_struct *set_task(int pid, struct task_struct *new_task);

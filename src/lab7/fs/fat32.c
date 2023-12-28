@@ -16,6 +16,10 @@ uint64_t cluster_to_sector(uint64_t cluster) {
     return (cluster - 2) * fat32_volume.sec_per_cluster + fat32_volume.first_data_sec;
 }
 
+uint32_t sector_to_cluster(uint64_t sector) {
+    return (sector - fat32_volume.first_data_sec) / fat32_volume.sec_per_cluster + 2;
+}
+
 uint32_t next_cluster(uint64_t cluster) {
     uint64_t fat_offset = cluster * 4;
     uint64_t fat_sector = fat32_volume.first_fat_sec + fat_offset / VIRTIO_BLK_SECTOR_SIZE;
@@ -26,13 +30,15 @@ uint32_t next_cluster(uint64_t cluster) {
 
 void fat32_init(uint64_t lba, uint64_t size) {
     virtio_blk_read_sector(lba, (void*)&fat32_header);
-    fat32_volume.first_fat_sec = 0/* to calculate */;
-    fat32_volume.sec_per_cluster = 0/* to calculate */;
-    fat32_volume.first_data_sec = 0/* to calculate */;
-    fat32_volume.fat_sz = 0/* to calculate */;
+    fat32_volume.first_fat_sec = lba + fat32_header.rsvd_sec_cnt;
+    fat32_volume.sec_per_cluster = fat32_header.sec_per_clus;
+    fat32_volume.first_data_sec = fat32_volume.first_fat_sec + fat32_header.fat_sz32 * fat32_header.num_fats;
+    fat32_volume.fat_sz = fat32_header.fat_sz32;
 
-    virtio_blk_read_sector(fat32_volume.first_data_sec, fat32_buf); // Get the root directory
-    struct fat32_dir_entry *dir_entry = (struct fat32_dir_entry *)fat32_buf;
+    printk("fat32_volume.first_fat_sec: %d\n", fat32_volume.first_fat_sec);
+    printk("fat32_volume.sec_per_cluster: %d\n", fat32_volume.sec_per_cluster);
+    printk("fat32_volume.first_data_sec: %d\n", fat32_volume.first_data_sec);
+    printk("fat32_volume.fat_sz: %d\n", fat32_volume.fat_sz);
 }
 
 int is_fat32(uint64_t lba) {
@@ -54,6 +60,31 @@ int next_slash(const char* path) {
     return i;
 }
 
+//void file_name_from_path(const char* path, char* file_name) {
+//    int i = strlen(path) - 1;
+//    while (i >= 0 && path[i] != '/') {
+//        i--;
+//    }
+//    if (i < 0) {
+//        strcpy(file_name, path);
+//    } else {
+//        strcpy(file_name, path + i + 1);
+//    }
+//}
+//
+//void dir_from_path(const char* path, char* dir) {
+//    int i = strlen(path) - 1;
+//    while (i >= 0 && path[i] != '/') {
+//        i--;
+//    }
+//    if (i < 0) {
+//        strcpy(dir, "/");
+//    } else {
+//        strncpy(dir, path, i);
+//        dir[i] = '\0';
+//    }
+//}
+
 void to_upper_case(char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
         if (str[i] >= 'a' && str[i] <= 'z') {
@@ -64,18 +95,49 @@ void to_upper_case(char *str) {
 
 struct fat32_file fat32_open_file(const char *path) {
     struct fat32_file file;
-    /* todo: open the file according to path */
-    return file;
+    char path_copy[11];
+    memset(path_copy, ' ', 11);
+
+    size_t len = strlen(path);
+    memcpy(path_copy, path+7, min(len-7,11));
+    to_upper_case(path_copy);
+
+    uint32_t sector = fat32_volume.first_data_sec;
+    virtio_blk_read_sector(sector, fat32_buf);
+    struct fat32_dir_entry *entry = (struct fat32_dir_entry *)fat32_buf;
+
+    while(1){
+        for(int i=0;i<FAT32_ENTRY_PER_SECTOR;i++){
+            char name[11];
+            memcpy(name, entry->name, 11);
+            to_upper_case(name);
+
+            if(memcmp(path_copy, entry->name, 11) == 0){
+                file.cluster = (uint32_t)entry->starthi << 16 | entry->startlow;
+                file.dir.index = i;
+                file.dir.cluster = sector_to_cluster(sector);
+                printk("[S] open file ");
+                printk(path);
+                printk("\n");
+                return file;
+            }
+            entry++;
+        }
+        sector++;
+        virtio_blk_read_sector(sector, fat32_buf);
+    }
 }
 
 int64_t fat32_lseek(struct file* file, int64_t offset, uint64_t whence) {
     if (whence == SEEK_SET) {
-        file->cfo = 0/* to calculate */;
+        file->cfo = offset;
     } else if (whence == SEEK_CUR) {
-        file->cfo = 0/* to calculate */;
+        file->cfo = file->cfo + offset;
     } else if (whence == SEEK_END) {
         /* Calculate file length */
-        file->cfo = 0/* to calculate */;
+        uint32_t index = file->fat32_file.dir.index % FAT32_ENTRY_PER_SECTOR;
+        int64_t length = ((struct fat32_dir_entry *)fat32_table_buf)[index].size;
+        file->cfo = length + offset;
     } else {
         printk("fat32_lseek: whence not implemented\n");
         while (1);
@@ -135,12 +197,68 @@ int64_t fat32_extend_filesz(struct file* file, uint64_t new_size) {
     return 0;
 }
 
+uint32_t get_filesz(struct file* file){
+    uint64_t sector = cluster_to_sector(file->fat32_file.dir.cluster) + file->fat32_file.dir.index / FAT32_ENTRY_PER_SECTOR;
+
+    virtio_blk_read_sector(sector, fat32_table_buf);
+    uint32_t index = file->fat32_file.dir.index % FAT32_ENTRY_PER_SECTOR;
+    return ((struct fat32_dir_entry *)fat32_table_buf)[index].size;
+}
+
 int64_t fat32_read(struct file* file, void* buf, uint64_t len) {
-    return 0;
-    /* todo: read content to buf, and return read length */
+    uint32_t filesz = get_filesz(file);
+
+    uint64_t read_len = 0;
+    while (read_len < len && file->cfo < filesz) {
+        //计算当前簇
+        uint32_t cluster = file->fat32_file.cluster + file->cfo / (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE);
+        //计算当前扇区
+        uint64_t sector = cluster_to_sector(cluster);
+        //计算当前扇区内偏移
+        uint64_t offset_in_sector = file->cfo % VIRTIO_BLK_SECTOR_SIZE;
+        //计算当前扇区内剩余可读字节数
+        uint64_t read_size = VIRTIO_BLK_SECTOR_SIZE - offset_in_sector;
+        read_size = min(read_size, len - read_len);
+        read_size = min(read_size, filesz - file->cfo);
+
+        //读取扇区
+        virtio_blk_read_sector(sector, fat32_buf);
+        memcpy(buf, fat32_buf + offset_in_sector, read_size);
+
+        file->cfo += read_size;
+        buf += read_size;
+        read_len += read_size;
+    }
+
+//    printk("\n[S] expect %d, read %d\n", len, read_len);
+
+    return read_len;
 }
 
 int64_t fat32_write(struct file* file, const void* buf, uint64_t len) {
-    return 0;
-    /* todo: fat32_write */
+    uint64_t write_len = 0;
+    while (len > 0) {
+        //计算当前簇
+        uint32_t cluster = file->fat32_file.cluster + file->cfo / (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE);
+        //计算当前扇区
+        uint64_t sector = cluster_to_sector(cluster);
+        //计算当前扇区内偏移
+        uint64_t offset_in_sector = file->cfo % VIRTIO_BLK_SECTOR_SIZE;
+        //计算当前扇区内剩余可写字节数
+        uint64_t write_size = VIRTIO_BLK_SECTOR_SIZE - offset_in_sector;
+        if (write_size > len) {
+            write_size = len;
+        }
+
+        //读取扇区
+        virtio_blk_read_sector(sector, fat32_buf);
+        memcpy(fat32_buf + offset_in_sector, buf, write_size);
+        virtio_blk_write_sector(sector, fat32_buf);
+
+        file->cfo += write_size;
+        buf += write_size;
+        len -= write_size;
+        write_len += write_size;
+    }
+    return write_len;
 }

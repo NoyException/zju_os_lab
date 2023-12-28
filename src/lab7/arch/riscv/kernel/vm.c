@@ -3,6 +3,7 @@
 #include "mm.h"
 #include "string.h"
 #include "printk.h"
+#include "virtio.h"
 
 /* early_pgtbl: 用于 setup_vm 进行 1GB 的 映射。 */
 unsigned long early_pgtbl[512] __attribute__((__aligned__(0x1000)));
@@ -58,6 +59,9 @@ void setup_vm_final(void) {
     create_mapping((uint64 *) swapper_pg_dir, (uint64)&_sdata, (uint64)&_sdata - PA2VA_OFFSET,
                    PHY_END+PA2VA_OFFSET - (uint64)&_sdata, 0B0111);
 
+    create_mapping((uint64 *) swapper_pg_dir, io_to_virt(VIRTIO_START), VIRTIO_START, VIRTIO_SIZE * VIRTIO_COUNT,
+                   0B0111);
+
     printk("satp(old): %llx\n", csr_read(satp));
 
     // set satp with swapper_pg_dir
@@ -75,14 +79,6 @@ void setup_vm_final(void) {
 
     printk("vm setup!\n");
 
-//    printk("_sdata = %llx\n", _sdata);
-//    _sdata = 0x123;
-//    printk("_sdata(modified) = %llx\n", _sdata);
-//    printk("_stext = %llx\n", _stext);
-//    _stext = 0x123;
-//    printk("_stext(modified) = %llx\n", _stext);
-//    printk("_srodata = %llx\n", _srodata);
-//    printk("done?");
 }
 
 
@@ -160,4 +156,8 @@ uint64 get_mapping(uint64 *pgtbl, uint64 va){
 
     //物理页
     return (pgtbl0[vpn0] >> 10 << 12) + (va % 0x1000);
+}
+
+uint64 get_kernel_mapping(uint64 va){
+    return get_mapping((uint64 *)swapper_pg_dir, va);
 }

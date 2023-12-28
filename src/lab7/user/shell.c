@@ -159,9 +159,9 @@ void parse_cmd(char* cmd, int len) {
         int offset_int = atoi(offset);
 
 
-        printf("%s\n", filename);
-        printf("%d\n", offset_int);
-        printf("%s\n", content);
+//        printf("%s\n", filename);
+//        printf("%d\n", offset_int);
+//        printf("%s\n", content);
 
         // while (1);
         int fd = open(filename, O_RDWR);
