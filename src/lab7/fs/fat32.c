@@ -93,6 +93,17 @@ void to_upper_case(char *str) {
     }
 }
 
+uint32_t count_clusters(uint32_t first_cluster) {
+    uint32_t count = 0;
+
+    while (first_cluster < 0x0FFFFFF8) {
+        count++;
+        first_cluster = next_cluster(first_cluster);
+    }
+
+    return count;
+}
+
 struct fat32_file fat32_open_file(const char *path) {
     struct fat32_file file;
     char path_copy[11];
@@ -103,22 +114,24 @@ struct fat32_file fat32_open_file(const char *path) {
     to_upper_case(path_copy);
 
     uint32_t sector = fat32_volume.first_data_sec;
+    uint32_t cluster = sector_to_cluster(sector);
+    uint32_t count = count_clusters(cluster);
+
     virtio_blk_read_sector(sector, fat32_buf);
     struct fat32_dir_entry *entry = (struct fat32_dir_entry *)fat32_buf;
 
-    while(1){
-        for(int i=0;i<FAT32_ENTRY_PER_SECTOR;i++){
+    for(int i=0;i<fat32_volume.sec_per_cluster*count;i++){
+        for(int j=0; j < FAT32_ENTRY_PER_SECTOR; j++){
             char name[11];
             memcpy(name, entry->name, 11);
             to_upper_case(name);
 
             if(memcmp(path_copy, entry->name, 11) == 0){
                 file.cluster = (uint32_t)entry->starthi << 16 | entry->startlow;
-                file.dir.index = i;
-                file.dir.cluster = sector_to_cluster(sector);
+                file.dir.index = j;
+                file.dir.cluster = cluster;
                 printk("[S] open file ");
                 printk(path);
-                printk("\n");
                 return file;
             }
             entry++;
@@ -126,6 +139,9 @@ struct fat32_file fat32_open_file(const char *path) {
         sector++;
         virtio_blk_read_sector(sector, fat32_buf);
     }
+    printk("[S] file not found\n");
+    memset(&file, 0, sizeof(struct fat32_file));
+    return file;
 }
 
 int64_t fat32_lseek(struct file* file, int64_t offset, uint64_t whence) {
@@ -205,13 +221,21 @@ uint32_t get_filesz(struct file* file){
     return ((struct fat32_dir_entry *)fat32_table_buf)[index].size;
 }
 
+uint32_t find_cluster(uint32_t cluster, int64_t cfo){
+    uint32_t cluster_offset = cfo / (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE);
+    for(int i=0;i<cluster_offset && cluster < 0xffffff8;i++){
+        cluster = next_cluster(cluster);
+    }
+    return cluster;
+}
+
 int64_t fat32_read(struct file* file, void* buf, uint64_t len) {
     uint32_t filesz = get_filesz(file);
 
     uint64_t read_len = 0;
     while (read_len < len && file->cfo < filesz) {
         //计算当前簇
-        uint32_t cluster = file->fat32_file.cluster + file->cfo / (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE);
+        uint32_t cluster = find_cluster(file->fat32_file.cluster, file->cfo);
         //计算当前扇区
         uint64_t sector = cluster_to_sector(cluster);
         //计算当前扇区内偏移
@@ -239,7 +263,7 @@ int64_t fat32_write(struct file* file, const void* buf, uint64_t len) {
     uint64_t write_len = 0;
     while (len > 0) {
         //计算当前簇
-        uint32_t cluster = file->fat32_file.cluster + file->cfo / (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE);
+        uint32_t cluster = find_cluster(file->fat32_file.cluster, file->cfo);
         //计算当前扇区
         uint64_t sector = cluster_to_sector(cluster);
         //计算当前扇区内偏移
