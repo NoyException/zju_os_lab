@@ -119,6 +119,13 @@ struct fat32_file fat32_open_file(const char *path) {
     return file;
 }
 
+uint32_t get_filesz(struct file* file){
+    uint64_t sector = cluster_to_sector(file->fat32_file.dir.cluster) + file->fat32_file.dir.index / FAT32_ENTRY_PER_SECTOR;
+    virtio_blk_read_sector(sector, fat32_table_buf);
+    uint32_t index = file->fat32_file.dir.index % FAT32_ENTRY_PER_SECTOR;
+    return ((struct fat32_dir_entry *)fat32_table_buf)[index].size;
+}
+
 int64_t fat32_lseek(struct file* file, int64_t offset, uint64_t whence) {
     if (whence == SEEK_SET) {
         file->cfo = offset;
@@ -126,11 +133,7 @@ int64_t fat32_lseek(struct file* file, int64_t offset, uint64_t whence) {
         file->cfo = file->cfo + offset;
     } else if (whence == SEEK_END) {
         /* Calculate file length */
-        uint64_t sector = cluster_to_sector(file->fat32_file.dir.cluster) + file->fat32_file.dir.index / FAT32_ENTRY_PER_SECTOR;
-        virtio_blk_read_sector(sector, fat32_table_buf);
-        uint32_t index = file->fat32_file.dir.index % FAT32_ENTRY_PER_SECTOR;
-        int64_t length = ((struct fat32_dir_entry *)fat32_table_buf)[index].size;
-        file->cfo = length + offset;
+        file->cfo = get_filesz(file) + offset;
     } else {
         printk("fat32_lseek: whence not implemented\n");
         while (1);
@@ -188,14 +191,6 @@ int64_t fat32_extend_filesz(struct file* file, uint64_t new_size) {
     virtio_blk_write_sector(fat_sector, fat32_table_buf);
 
     return 0;
-}
-
-uint32_t get_filesz(struct file* file){
-    uint64_t sector = cluster_to_sector(file->fat32_file.dir.cluster) + file->fat32_file.dir.index / FAT32_ENTRY_PER_SECTOR;
-
-    virtio_blk_read_sector(sector, fat32_table_buf);
-    uint32_t index = file->fat32_file.dir.index % FAT32_ENTRY_PER_SECTOR;
-    return ((struct fat32_dir_entry *)fat32_table_buf)[index].size;
 }
 
 uint32_t find_cluster(uint32_t cluster, int64_t cfo){
