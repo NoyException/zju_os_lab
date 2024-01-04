@@ -126,6 +126,8 @@ int64_t fat32_lseek(struct file* file, int64_t offset, uint64_t whence) {
         file->cfo = file->cfo + offset;
     } else if (whence == SEEK_END) {
         /* Calculate file length */
+        uint64_t sector = cluster_to_sector(file->fat32_file.dir.cluster) + file->fat32_file.dir.index / FAT32_ENTRY_PER_SECTOR;
+        virtio_blk_read_sector(sector, fat32_table_buf);
         uint32_t index = file->fat32_file.dir.index % FAT32_ENTRY_PER_SECTOR;
         int64_t length = ((struct fat32_dir_entry *)fat32_table_buf)[index].size;
         file->cfo = length + offset;
